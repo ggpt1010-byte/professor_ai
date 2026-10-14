@@ -277,8 +277,7 @@ textarea {
       <span class="slabel" id="who-label">나</span>
       <select id="degree" aria-label="과정">
         <option value="석사">석사</option>
-        <option value="박사" selected>박사</option>
-        <option value="석박통합">석박통합</option>
+        <option value="석박통합" selected>석박통합</option>
       </select>
       <select id="year" aria-label="연차">
         <option value="1">1년차</option><option value="2">2년차</option><option value="3" selected>3년차</option>
@@ -456,9 +455,8 @@ function timeLines(d = new Date()) {
 function senderText(ctx) {
   const y = ctx.year >= 6 ? "6년차 이상" : `${ctx.year}년차`;
   let note = "";
-  if (ctx.degree === "석박통합") note = ctx.year >= 3 ? " (3년차 이상이라 박사로 취급)" : " (아직 석사로 취급)";
+  if (ctx.degree === "석박통합") note = ctx.year >= 5 ? " (박사로 취급, 졸업을 앞둔 박사)" : ctx.year >= 3 ? " (3년차 이상이라 박사로 취급)" : " (아직 석사로 취급)";
   else if (ctx.degree === "석사" && ctx.year >= 2) note = " (졸업을 앞둔 석사)";
-  else if (ctx.degree === "박사" && ctx.year >= 5) note = " (졸업을 앞둔 박사)";
   return `${ctx.degree} ${y}${note}`;
 }
 
@@ -466,7 +464,7 @@ function senderText(ctx) {
 try {
   const saved = JSON.parse(localStorage.getItem("who") || "null");
   if (saved) {
-    if (saved.degree) $("#degree").value = saved.degree;
+    if (saved.degree) $("#degree").value = saved.degree === "박사" ? "석박통합" : saved.degree;
     if (saved.year) $("#year").value = String(saved.year);
     if (saved.room) document.getElementById(`room-${saved.room}`).checked = true;
     for (const k of ["team", "papers", "now"]) if (saved[k] !== undefined) $("#" + k).value = saved[k];
