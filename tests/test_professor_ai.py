@@ -107,6 +107,10 @@ def test_not_a_question():
         ("https://x.zoom.us/j/123?pwd=AbC1.2", "https://x.zoom.us/j/123?pwd=[비밀번호]"),
         ("[NICE] 인증번호 [760931]를 입력해주세요.", "[NICE] 인증번호 [인증번호]를 입력해주세요."),
         ("인증번호 6자리 보내주시면", "인증번호 6자리 보내주시면"),
+        ("아이디가 13870 패스워드가 password 라고", "아이디가 [아이디] 패스워드가 [비밀번호] 라고"),
+        ("암호: 4i{Y4o}O6o 이니", "암호: [비밀번호] 이니"),
+        ("http://a.com 로 들어가면 비번 kilby2002", "http://a.com 로 들어가면 비번 [비밀번호]"),
+        ("BK 비번을 바꾸었는데", "BK 비번을 바꾸었는데"),
     ],
 )
 def test_mask_credentials(text, expected):

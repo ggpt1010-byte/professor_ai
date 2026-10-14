@@ -17,7 +17,13 @@ SCORE_LINE_RE = re.compile(r"^\s*[가-힣]{2,5}\s*(\(\d+\))?(\s+\d+(\.\d+)?){1,}
 RANK_RE = re.compile(r"\d+\s*등(\s*에서\s*)\d+\s*등")
 EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(\.[\w-]+)+")
 # 비밀번호가 언급된 메시지에서 숫자가 섞인 낱말은 비밀번호로 보고 가린다 ('kilby2002!', '킬비2002퍼센트다')
-CRED_KW_RE = re.compile(r"(?i)(비밀번호|비번|패스워드|password|passwd|pwd|\bpw\b)")
+CRED_KW_RE = re.compile(r"(?i)(비밀번호|비번|패스워드|암호|password|passwd|pwd|\bpw\b)")
+# 키워드 바로 뒤의 값: '패스워드가 password', '암호: 4i{Y4o}O6o', '아이디가 13870'
+KW_VALUE_RE = re.compile(
+    r"(?i)((?:비밀번호|비번|패스워드|암호|password|passwd|\bpw\b)\s*(?:는|은|가|:|=|：)?\s*)([A-Za-z0-9{}\[\]()!@#$%^&*_+=~.-]{4,})"
+)
+ID_VALUE_RE = re.compile(r"(?i)((?:아이디|\bid\b)\s*(?:는|은|가|:|=|：)?\s*)(?=[\w.-]*\d)([\w.-]{3,})")
+URL_RE = re.compile(r"https?://\S+")
 SECRET_TOKEN_RE = re.compile(r"(?<![\w/])(?=\S*\d)(?=\S*[A-Za-z가-힣])[^\s:=]+")
 # '2월6일까지', '3명' 처럼 숫자 뒤에 단위가 붙은 낱말은 비밀번호가 아니다
 COUNT_WORD_RE = re.compile(r"\d+(년|월|일|시|분|초|명|개|번|차|주|장|층|호|원|점|등)")
@@ -140,15 +146,29 @@ def mask_text(text: str, report: CleanReport | None = None) -> str:
         count("아이디", n)
         masked_lines = []
         for ln in text.splitlines():
-            if "http" in ln:
-                masked_lines.append(ln)
-                continue
-            hits = [t for t in SECRET_TOKEN_RE.findall(ln) if not COUNT_WORD_RE.search(t)]
-            ln = SECRET_TOKEN_RE.sub(
-                lambda m: m.group(0) if COUNT_WORD_RE.search(m.group(0)) else SECRET_MASK, ln
-            )
-            count("비밀번호", len(hits))
-            masked_lines.append(ln)
+            # URL은 그대로 두고 나머지 부분만 가린다
+            parts = URL_RE.split(ln)
+            urls = URL_RE.findall(ln)
+            out = []
+            for i, part in enumerate(parts):
+                part, n = ID_VALUE_RE.subn(lambda m: m.group(1) + "[아이디]", part)
+                count("아이디", n)
+                part, n = KW_VALUE_RE.subn(
+                    lambda m: m.group(0) if m.group(2) == SECRET_MASK.strip("[]") else m.group(1) + SECRET_MASK, part
+                )
+                count("비밀번호", n)
+                hits = [t for t in SECRET_TOKEN_RE.findall(part) if not COUNT_WORD_RE.search(t) and t not in (SECRET_MASK, "[아이디]")]
+                part = SECRET_TOKEN_RE.sub(
+                    lambda m: m.group(0)
+                    if COUNT_WORD_RE.search(m.group(0)) or m.group(0) in (SECRET_MASK, "[아이디]")
+                    else SECRET_MASK,
+                    part,
+                )
+                count("비밀번호", len(hits))
+                out.append(part)
+                if i < len(urls):
+                    out.append(urls[i])
+            masked_lines.append("".join(out))
         text = "\n".join(masked_lines)
     return text
 
