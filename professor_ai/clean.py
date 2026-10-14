@@ -131,6 +131,8 @@ def mask_text(text: str, report: CleanReport | None = None) -> str:
 
     text, n = PHONE_RE.subn(PHONE_MASK, text)
     count("전화번호", n)
+    text, n = re.subn(r"(내선\s*)\d{3,5}", lambda m: m.group(1) + PHONE_MASK, text)
+    count("전화번호", n)
     out_lines = []
     for ln in text.splitlines():
         if SCORE_LINE_RE.match(ln):
