@@ -298,17 +298,6 @@ textarea {
         </select>
       </div>
       <div class="srow">
-        <span class="slabel" id="tape-label">칩</span>
-        <select id="tape" aria-labelledby="tape-label">
-          <option value="">선택 안 함</option>
-          <option value="아직 테잎아웃한 칩 없음">아직 테잎아웃 안 함</option>
-          <option value="다음 테잎아웃을 위해 설계 중">설계 중</option>
-          <option value="테잎아웃하고 칩 나오기를 기다리는 중">칩 기다리는 중</option>
-          <option value="최근 칩 측정 중">측정 중</option>
-          <option value="최근 칩 측정 끝내고 논문 쓰는 중">논문 쓰는 중</option>
-        </select>
-      </div>
-      <div class="srow">
         <span class="slabel" id="now-label">요즘</span>
         <input type="text" id="now" maxlength="80" aria-labelledby="now-label" placeholder="예: ISSCC 마감 2주 전, 졸업 심사 준비">
       </div>
@@ -441,7 +430,6 @@ function currentCtx() {
     year: Number($("#year").value),
     team: $("#team").value,
     papers: $("#papers").value,
-    tape: $("#tape").value,
     now: $("#now").value.trim(),
   };
 }
@@ -451,7 +439,6 @@ function statusLines(ctx) {
   const out = [];
   if (ctx.team) out.push(`- 학생의 팀: ${ctx.team}`);
   if (ctx.papers !== "" && ctx.papers !== undefined) out.push(`- 학생이 지금까지 쓴 논문: ${ctx.papers === "3" ? "3편 이상" : ctx.papers + "편"}`);
-  if (ctx.tape) out.push(`- 학생의 칩 진행: ${ctx.tape}`);
   if (ctx.now) out.push(`- 학생의 요즘 상황(학생이 적은 것): ${ctx.now}`);
   return out;
 }
@@ -482,14 +469,14 @@ try {
     if (saved.degree) $("#degree").value = saved.degree;
     if (saved.year) $("#year").value = String(saved.year);
     if (saved.room) document.getElementById(`room-${saved.room}`).checked = true;
-    for (const k of ["team", "papers", "tape", "now"]) if (saved[k] !== undefined) $("#" + k).value = saved[k];
-    if (saved.team || saved.papers || saved.tape || saved.now) $("#more").open = true;
+    for (const k of ["team", "papers", "now"]) if (saved[k] !== undefined) $("#" + k).value = saved[k];
+    if (saved.team || saved.papers || saved.now) $("#more").open = true;
   }
 } catch (_) {}
 function rememberWho() {
   try { localStorage.setItem("who", JSON.stringify(currentCtx())); } catch (_) {}
 }
-for (const n of document.querySelectorAll("#degree, #year, #team, #papers, #tape, #now, input[name=room]")) n.addEventListener("change", () => { rememberWho(); setTitle(); });
+for (const n of document.querySelectorAll("#degree, #year, #team, #papers, #now, input[name=room]")) n.addEventListener("change", () => { rememberWho(); setTitle(); });
 
 function formatExample(e) {
   const lines = [];
