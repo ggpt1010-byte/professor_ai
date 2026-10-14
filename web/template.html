@@ -544,7 +544,7 @@ stopBtn.addEventListener("click", () => ctl && ctl.abort());
 
 // 처음 화면: 실제 기록에서 고른 예시 한 쌍
 (function showExample() {
-  const ex = STYLE.examples.find((e) => e.mood === "ss" && e.s && e.s.includes("줌으로")) || STYLE.examples[0];
+  const ex = STYLE.examples.find((e) => e.room === "group" && e.mood === "ss" && e.s && e.s.includes("MPW 준비 중인 사람")) || STYLE.examples.find((e) => e.room === "group" && e.s && !e.s.startsWith("[")) || STYLE.examples[0];
   const view = renderTurn({ text: ex.s, mood: ex.mood, example: true, ctx: { room: ex.room || "dm" } });
   setBubbles(view.bubbles, ex.p, false);
 })();
