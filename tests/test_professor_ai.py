@@ -54,6 +54,7 @@ def test_clean(tmp_path: Path):
 def test_mask_scores_and_rank():
     assert mask_text("최민영 (48) 10 7 7 14 10") == "최민영 [점수]"
     assert mask_text("38등에서 31등 정도") == "[석차]에서 [석차] 정도"
+    assert mask_text("우리는 6등으로 선정되었다") == "우리는 6등으로 선정되었다"
     assert mask_text("34만 6천원, 2025_2R, 공학관 448호") == "34만 6천원, 2025_2R, 공학관 448호"
 
 
@@ -91,3 +92,53 @@ def test_question_prefix(line, expected):
 def test_not_a_question():
     assert cli.QUESTION_RE.match("ffff 안녕") is None
     assert cli.QUESTION_RE.match("교수님 ff") is None
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("id: abc\npwd: secret2002!\n입니다", "id: [아이디]\npwd: [비밀번호]\n입니다"),
+        ("비번은 비밀2002퍼센트다", "비번은 [비밀번호]"),
+        ("email: me@korea.ac.kr password: abc123", "email: [이메일] password: [비밀번호]"),
+        ("JSSC와 TVLSI 비번 abc2026", "JSSC와 TVLSI 비번 [비밀번호]"),
+        ("연구재단 id 비번이 뭐지?", "연구재단 id 비번이 뭐지?"),
+        ("내년2월6일까지 쓰고 패스워드 아는 사람?", "내년2월6일까지 쓰고 패스워드 아는 사람?"),
+        ("https://x.zoom.us/j/123?pwd=AbC1.2", "https://x.zoom.us/j/123?pwd=[비밀번호]"),
+    ],
+)
+def test_mask_credentials(text, expected):
+    assert mask_text(text) == expected
+
+
+GROUP = """AISL 학생 님과 카카오톡 대화
+저장한 날짜 : 2026-10-14 14:47:17
+
+--------------- 2025년 4월 7일 월요일 ---------------
+전진우님이 신제우님, 김태현님을 초대했습니다.
+--------------- 2025년 4월 10일 목요일 ---------------
+[김철우 교수님] [오전 10:59] 새로 방을 만들었다
+팀 이름이 변경되었습니다.
+[성철이형] [오후 2:19] 네 알겠습니다
+두 번째 줄
+[김태현] [오후 2:20] 확인했습니다
+박진우님이 나갔습니다.
+"""
+
+
+def test_group_chat(tmp_path: Path, monkeypatch):
+    r = parse(GROUP)
+    assert r.is_group
+    assert r.professor_name == "김철우 교수님"
+    assert [m.role for m in r.messages] == ["professor", "student", "student"]
+    assert r.messages[0].text == "새로 방을 만들었다"
+    assert r.messages[1].text == "네 알겠습니다\n두 번째 줄"
+    assert r.messages[2].text == "확인했습니다"
+
+    monkeypatch.setattr(store, "ROOT", tmp_path)
+    src = tmp_path / "AISL_전체톡방_카톡.txt"
+    src.write_text(GROUP, encoding="utf-8")
+    cli.learn(src)
+    assert store.list_chats() == ["AISL_전체톡방"]
+    assert store.list_students() == []
+    out = cli.ask("김태현", "nn", "질문", dry_run=True)
+    assert "### 단체방: AISL_전체톡방" in out and "성철이형: 네 알겠습니다" in out

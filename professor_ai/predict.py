@@ -15,23 +15,22 @@ class PredictError(RuntimeError):
     pass
 
 
-def load_context() -> tuple[str, dict]:
-    students = store.list_students()
-    if not students:
+def load_context() -> tuple[str, dict, dict]:
+    chats = store.list_chats()
+    if not chats:
         raise PredictError("학습된 대화가 없습니다. 먼저 카톡 .txt 파일로 학습시켜 주세요.")
-    transcripts = {s: store.load_messages(s) for s in students}
-    professor = next(
-        (store.load_meta(s).get("professor_name") for s in students if store.load_meta(s).get("professor_name")),
-        "",
-    )
-    return professor, transcripts
+    transcripts = {c: store.load_messages(c) for c in chats}
+    metas = {c: store.load_meta(c) for c in chats}
+    kinds = {c: m.get("kind", "dm") for c, m in metas.items()}
+    professor = next((m["professor_name"] for m in metas.values() if m.get("professor_name")), "")
+    return professor, transcripts, kinds
 
 
 def predict(student: str, mode: str, text: str, *, model: str | None = None, effort: str | None = None) -> str:
     import anthropic  # 학습 모드만 쓸 때는 SDK가 없어도 되도록
 
-    professor, transcripts = load_context()
-    system = build_system(professor, transcripts)
+    professor, transcripts, kinds = load_context()
+    system = build_system(professor, transcripts, kinds)
     client = anthropic.Anthropic()  # ANTHROPIC_API_KEY 환경 변수 사용
     try:
         response = client.beta.messages.create(

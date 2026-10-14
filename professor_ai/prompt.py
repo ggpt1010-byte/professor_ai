@@ -45,7 +45,9 @@ SYSTEM_TEMPLATE = """\
 - [전화번호], [점수], [석차]는 개인정보를 가린 자리다. 답장에 그대로 흉내 내지 않는다.
 
 ## 실제 대화 기록
-학생별로 날짜순 정리. '교수님:'이 교수님 메시지, '학생:'이 그 학생 메시지다.
+대화방별로 날짜순 정리. '교수님:'이 교수님 메시지다.
+1:1 대화방에서 '학생:'은 그 학생, 단체방에서는 보낸 사람 이름을 적었다.
+아주 긴 메시지(주로 퍼온 기사)는 앞부분만 남기고 줄였다.
 
 {transcripts}
 """
@@ -57,19 +59,35 @@ USER_TEMPLATE = """\
 {text}"""
 
 
-def format_transcript(student: str, messages: list[Message]) -> str:
-    out = [f"### 학생: {student}"]
+LONG_MESSAGE = 400  # 이보다 긴 메시지는 앞부분만 프롬프트에 넣는다
+LONG_KEEP = 150
+
+
+def shorten(text: str) -> str:
+    if len(text) <= LONG_MESSAGE:
+        return text
+    return text[:LONG_KEEP].rstrip() + f" …(긴 글 {len(text)}자 생략)"
+
+
+def format_transcript(chat: str, messages: list[Message], kind: str = "dm") -> str:
+    out = [f"### 단체방: {chat}" if kind == "group" else f"### 1:1 대화: {chat} 학생"]
     for date, group in groupby(messages, key=lambda m: m.date):
         out.append(f"[{date}]")
         for m in group:
-            who = "교수님" if m.role == "professor" else "학생"
-            body = m.text.replace("\n", "\n    ")
+            if m.role == "professor":
+                who = "교수님"
+            else:
+                who = m.name if kind == "group" else "학생"
+            body = shorten(m.text).replace("\n", "\n    ")
             out.append(f"{m.time} {who}: {body}")
     return "\n".join(out)
 
 
-def build_system(professor: str, transcripts: dict[str, list[Message]]) -> str:
-    blocks = [format_transcript(s, msgs) for s, msgs in sorted(transcripts.items())]
+def build_system(professor: str, transcripts: dict[str, list[Message]], kinds: dict[str, str] | None = None) -> str:
+    kinds = kinds or {}
+    # 1:1 대화를 먼저, 단체방을 뒤에 (질문은 1:1 상황이므로)
+    order = sorted(transcripts, key=lambda c: (kinds.get(c, "dm") == "group", c))
+    blocks = [format_transcript(c, transcripts[c], kinds.get(c, "dm")) for c in order]
     return SYSTEM_TEMPLATE.format(
         professor=professor or "교수님",
         mood_guide=MOOD_GUIDE,

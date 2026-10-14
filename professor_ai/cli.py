@@ -19,22 +19,25 @@ from .prompt import MOODS, build_system, build_user
 QUESTION_RE = re.compile(r"^(ff|nn|ss)\s+(.+)$", re.S | re.I)
 
 
-def guess_student(path: Path) -> str:
-    """'김태현_카톡.txt' -> '김태현'"""
-    return re.split(r"[_\s.-]", path.stem, maxsplit=1)[0]
+def guess_chat_name(path: Path) -> str:
+    """'김태현_카톡.txt' -> '김태현', 'AISL_전체톡방_카톡.txt' -> 'AISL_전체톡방'"""
+    stem = re.sub(r"[_\s-]*(카톡|카카오톡|kakaotalk)$", "", path.stem, flags=re.I)
+    return stem.strip() or path.stem
 
 
-def learn(path: Path, student: str | None = None) -> str:
-    student = student or guess_student(path)
+def learn(path: Path, chat: str | None = None) -> str:
+    chat = chat or guess_chat_name(path)
     text = path.read_text(encoding="utf-8-sig")
     parsed = parse(text)
     if not parsed.messages:
         raise ValueError(f"{path.name}에서 카톡 메시지를 찾지 못했습니다. 카카오톡 '대화 내보내기' 파일이 맞나요?")
-    rules = load_exclude_rules(store.exclude_path(student))
+    kind = "group" if parsed.is_group else "dm"
+    rules = load_exclude_rules(store.exclude_path(chat))
     kept, report = clean(parsed.messages, rules)
-    added, total = store.save_learned(student, kept, parsed.professor_name, path.name)
+    added, total = store.save_learned(chat, kept, parsed.professor_name, path.name, kind)
+    label = "단체방" if kind == "group" else "학생"
     lines = [
-        f"[학습 완료] 학생: {student} / 교수님: {parsed.professor_name or '(이름 못 찾음)'}",
+        f"[학습 완료] {label}: {chat} / 교수님: {parsed.professor_name or '(이름 못 찾음)'}",
         f"  {report.summary()}, 삭제된 메시지 {parsed.deleted_count}개 제외",
         f"  새로 추가 {added}개, 지금까지 학습한 메시지 {total}개",
     ]
@@ -44,13 +47,11 @@ def learn(path: Path, student: str | None = None) -> str:
 def pick_student(student: str | None) -> str:
     students = store.list_students()
     if student:
-        if student not in students:
-            raise SystemExit(f"'{student}' 학생의 학습 기록이 없습니다. 학습된 학생: {', '.join(students) or '없음'}")
-        return student
+        return student  # 1:1 기록이 없는 학생도 이름만으로 질문할 수 있다
     if len(students) == 1:
         return students[0]
     if not students:
-        raise SystemExit("학습된 대화가 없습니다. 먼저 카톡 .txt 파일로 학습시켜 주세요.")
+        raise SystemExit("질문하는 학생 이름을 정해 주세요 (--student 또는 /학생 이름).")
     raise SystemExit(f"학생을 골라 주세요 (--student). 학습된 학생: {', '.join(students)}")
 
 
@@ -61,8 +62,8 @@ def ask(student: str, mode: str, text: str, *, dry_run: bool = False, model: str
     if dry_run:
         from .predict import load_context
 
-        professor, transcripts = load_context()
-        return build_system(professor, transcripts) + "\n\n===== 질문 =====\n" + build_user(student, mode, text)
+        professor, transcripts, kinds = load_context()
+        return build_system(professor, transcripts, kinds) + "\n\n===== 질문 =====\n" + build_user(student, mode, text)
     from .predict import PredictError, predict
 
     try:
@@ -120,7 +121,7 @@ def main(argv: list[str] | None = None) -> int:
 
     pl = sub.add_parser("learn", help="카톡 .txt 파일로 학습")
     pl.add_argument("file", type=Path)
-    pl.add_argument("--student", help="학생 이름 (기본: 파일 이름 앞부분)")
+    pl.add_argument("--chat", help="대화방 이름 (기본: 파일 이름에서 '_카톡'을 뺀 것)")
 
     pa = sub.add_parser("ask", help="예상 답장 받기 (저장 안 됨)")
     pa.add_argument("mode", choices=sorted(MOODS), type=str.lower)
@@ -128,17 +129,18 @@ def main(argv: list[str] | None = None) -> int:
     pa.add_argument("--student")
     pa.add_argument("--dry-run", action="store_true", help="API를 부르지 않고 보낼 프롬프트만 출력")
 
-    sub.add_parser("students", help="학습된 학생 목록")
+    sub.add_parser("chats", help="학습된 대화방 목록")
 
     args = p.parse_args(argv)
     if args.cmd == "learn":
-        print(learn(args.file, args.student))
+        print(learn(args.file, args.chat))
     elif args.cmd == "ask":
         print(ask(pick_student(args.student), args.mode, " ".join(args.text), dry_run=args.dry_run, model=args.model))
-    elif args.cmd == "students":
-        for s in store.list_students():
-            meta = store.load_meta(s)
-            print(f"{s}: 메시지 {meta.get('message_count', '?')}개, 마지막 학습 {meta.get('last_learned_at', '?')}")
+    elif args.cmd == "chats":
+        for c in store.list_chats():
+            meta = store.load_meta(c)
+            kind = "단체방" if meta.get("kind") == "group" else "1:1"
+            print(f"{c} ({kind}): 메시지 {meta.get('message_count', '?')}개, 마지막 학습 {meta.get('last_learned_at', '?')}")
     else:
         return repl(None, args.model)
     return 0

@@ -9,6 +9,6 @@ __pycache__/
 KakaoTalk_*.txt
 
 # 학습된 대화 기록: 저장소가 비공개로 바뀌기 전까지 올리지 않는다.
-# 비공개 확인 후 아래 두 줄을 지우고 data/students/ 를 커밋하면 된다.
-data/students/*/messages.jsonl
-data/students/*/meta.json
+# 비공개 확인 후 아래 두 줄을 지우고 data/chats/ 를 커밋하면 된다.
+data/chats/*/messages.jsonl
+data/chats/*/meta.json

@@ -18,6 +18,11 @@ DATE_RE = re.compile(r"^-+\s*(\d{4})년 (\d{1,2})월 (\d{1,2})일 \S+\s*-+$")
 MSG_RE = re.compile(r"^\[(?P<name>[^\]]+)\] \[(?P<ampm>오전|오후) (?P<h>\d{1,2}):(?P<m>\d{2})\] ?(?P<text>.*)$")
 TITLE_RE = re.compile(r"^(?P<name>.+?) 님과 카카오톡 대화$")
 DELETED = "메시지가 삭제되었습니다."
+# 단체방 안내 문구 (초대, 나가기 등). 메시지 이어지는 줄로 오해하지 않도록 따로 거른다.
+SYSTEM_LINE_RE = re.compile(
+    r"^(\S.*님이 \S.*님을 초대했습니다\.|\S{1,20}( \S{1,10})?님이 (나갔습니다|들어왔습니다)\.|"
+    r"\S.*님이 \S.*님을 내보냈습니다\.|팀 이름이 변경되었습니다\.|채팅방 관리자가 .*)$"
+)
 
 
 @dataclass
@@ -37,6 +42,11 @@ class ParseResult:
     professor_name: str
     messages: list[Message]
     deleted_count: int
+    title: str = ""
+
+    @property
+    def is_group(self) -> bool:
+        return len({m.name for m in self.messages}) > 2
 
 
 def _to_24h(ampm: str, h: str, m: str) -> str:
@@ -54,12 +64,15 @@ def parse(text: str, professor_hint: str = "교수") -> ParseResult:
     """
     lines = text.lstrip("﻿").replace("\r\n", "\n").replace("\r", "\n").split("\n")
 
-    professor_name = ""
+    title = ""
     for line in lines[:5]:
         m = TITLE_RE.match(line.strip())
         if m:
-            professor_name = m.group("name").strip()
+            title = m.group("name").strip()
             break
+    # 1:1 대화는 제목의 상대방이 교수님. 단체방 제목('AISL 학생')은 사람 이름이 아니다.
+    senders = {mm.group("name").strip() for mm in map(MSG_RE.match, lines) if mm}
+    professor_name = title if title in senders else ""
 
     messages: list[Message] = []
     deleted = 0
@@ -75,6 +88,8 @@ def parse(text: str, professor_hint: str = "교수") -> ParseResult:
             continue  # 파일 머리말
         if line.strip() == DELETED:
             deleted += 1
+            continue
+        if SYSTEM_LINE_RE.match(line.strip()):
             continue
         mm = MSG_RE.match(line)
         if mm:
@@ -94,4 +109,4 @@ def parse(text: str, professor_hint: str = "교수") -> ParseResult:
     if not professor_name:
         names = {m.name for m in messages if m.role == "professor"}
         professor_name = next(iter(names), "")
-    return ParseResult(professor_name, messages, deleted)
+    return ParseResult(professor_name, messages, deleted, title)

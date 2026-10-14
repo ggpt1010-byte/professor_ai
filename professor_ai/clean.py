@@ -10,16 +10,26 @@ from pathlib import Path
 from .kakao import Message
 
 # 전화번호: 010-1234-5678, 02 3290 1357, 01012345678 ...
-PHONE_RE = re.compile(r"(?<!\d)0\d{1,2}[-. ]?\d{3,4}[-. ]?\d{4}(?!\d)")
+PHONE_RE = re.compile(r"(?<![\w/=?&.-])0\d{1,2}[-. ]?\d{3,4}[-. ]?\d{4}(?!\d)")
 # 점수 목록 한 줄: '석예찬 (23) 3 3 3 7 5', '양재서 5 4 3 5 5 (22)', '성철현종 102 72 30'
 SCORE_LINE_RE = re.compile(r"^\s*[가-힣]{2,5}\s*(\(\d+\))?(\s+\d+(\.\d+)?){1,}\s*(\(\d+\))?\s*$")
-# 석차: '38등에서 31등'
-RANK_RE = re.compile(r"\d+\s*등")
+# 학생 석차: '38등에서 31등' (연구실 순위 '6등으로 선정' 같은 건 그대로 둔다)
+RANK_RE = re.compile(r"\d+\s*등(\s*에서\s*)\d+\s*등")
+EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(\.[\w-]+)+")
+# 비밀번호가 언급된 메시지에서 숫자가 섞인 낱말은 비밀번호로 보고 가린다 ('kilby2002!', '킬비2002퍼센트다')
+CRED_KW_RE = re.compile(r"(?i)(비밀번호|비번|패스워드|password|passwd|pwd|\bpw\b)")
+SECRET_TOKEN_RE = re.compile(r"(?<![\w/])(?=\S*\d)(?=\S*[A-Za-z가-힣])[^\s:=]+")
+# '2월6일까지', '3명' 처럼 숫자 뒤에 단위가 붙은 낱말은 비밀번호가 아니다
+COUNT_WORD_RE = re.compile(r"\d+(년|월|일|시|분|초|명|개|번|차|주|장|층|호|원|점|등)")
+ID_RE = re.compile(r"(?i)\b(id|아이디)(\s*[:=]\s*)(\S+)")
+URL_PWD_RE = re.compile(r"([?&]pwd=)[^&\s]+")
 BARE_NAME_RE = re.compile(r"^[가-힣]{2,4}$")
 # 통화 기록, 첨부만 있는 메시지 등 교수님 말투와 상관없는 시스템성 메시지
 SYSTEM_RE = re.compile(r"^(보이스톡|페이스톡)( 해요| 부재중| 취소| \d+:\d+)?$")
 
 PHONE_MASK = "[전화번호]"
+EMAIL_MASK = "[이메일]"
+SECRET_MASK = "[비밀번호]"
 SCORE_MASK = "[점수]"
 RANK_MASK = "[석차]"
 
@@ -110,8 +120,27 @@ def mask_text(text: str, report: CleanReport | None = None) -> str:
         else:
             out_lines.append(ln)
     text = "\n".join(out_lines)
-    text, n = RANK_RE.subn(RANK_MASK, text)
-    count("석차", n)
+    text, n = RANK_RE.subn(lambda m: f"{RANK_MASK}{m.group(1)}{RANK_MASK}", text)
+    count("석차", n * 2)
+    text, n = EMAIL_RE.subn(EMAIL_MASK, text)
+    count("이메일", n)
+    text, n = URL_PWD_RE.subn(lambda m: m.group(1) + SECRET_MASK, text)
+    count("비밀번호", n)
+    if CRED_KW_RE.search(text):
+        text, n = ID_RE.subn(lambda m: m.group(1) + m.group(2) + "[아이디]", text)
+        count("아이디", n)
+        masked_lines = []
+        for ln in text.splitlines():
+            if "http" in ln:
+                masked_lines.append(ln)
+                continue
+            hits = [t for t in SECRET_TOKEN_RE.findall(ln) if not COUNT_WORD_RE.search(t)]
+            ln = SECRET_TOKEN_RE.sub(
+                lambda m: m.group(0) if COUNT_WORD_RE.search(m.group(0)) else SECRET_MASK, ln
+            )
+            count("비밀번호", len(hits))
+            masked_lines.append(ln)
+        text = "\n".join(masked_lines)
     return text
 
 
