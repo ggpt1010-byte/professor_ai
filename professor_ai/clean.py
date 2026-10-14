@@ -38,6 +38,8 @@ URL_PWD_RE = re.compile(r"([?&]pwd=)[^&\s]+")
 OTP_RE = re.compile(r"(인증\s*번호\s*\[?)\d{4,8}(\]?)")
 OTP_MASK = "[인증번호]"
 # 줌 회의 번호: 'zoom.us/j/12345678901', '회의 ID: 123 4567 8901'
+# 구글 문서·시트 공유 링크: 링크만 있으면 누구나 열 수 있으니 문서 ID를 가린다
+GDOC_URL_RE = re.compile(r"(docs\.google\.com/[\w/]*?/d/)[\w-]{20,}[^\s]*")
 ZOOM_URL_ID_RE = re.compile(r"(zoom\.us/j/)\d{9,11}")
 ZOOM_ID_RE = re.compile(r"((?:회의\s*ID|Meeting\s*ID)\s*[:：]?\s*(?:\[아이디\])?\s*)\d{3,4}(?:\s?\d{3,4}){1,2}", re.I)
 MEETING_MASK = "[회의번호]"
@@ -155,6 +157,8 @@ def mask_text(text: str, report: CleanReport | None = None) -> str:
     count("비밀번호", n)
     text, n = LAB_SECRET_RE.subn(SECRET_MASK, text)
     count("비밀번호", n)
+    text, n = GDOC_URL_RE.subn(lambda m: m.group(1) + SECRET_MASK, text)
+    count("공유 링크", n)
     text, n = ZOOM_URL_ID_RE.subn(lambda m: m.group(1) + MEETING_MASK, text)
     count("회의번호", n)
     text, n = ZOOM_ID_RE.subn(lambda m: m.group(1) + MEETING_MASK, text)

@@ -168,3 +168,9 @@ def test_masks_international_phone_numbers():
     for raw in ["M +82-10-1234-5678", "+82 10 1234 5678", "+82-(0)10-1234-5678"]:
         out = mask_text(raw)
         assert "1234" not in out and "5678" not in out, out
+
+
+def test_masks_google_docs_share_links():
+    from professor_ai.clean import mask_text
+    out = mask_text("시트 https://docs.google.com/spreadsheets/d/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/edit?usp=sharing 확인")
+    assert "1AbCdEfGh" not in out and "usp=sharing" not in out and "docs.google.com/spreadsheets/d/" in out
