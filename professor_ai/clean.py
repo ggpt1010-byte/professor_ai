@@ -145,6 +145,10 @@ def mask_text(text: str, report: CleanReport | None = None) -> str:
     count("비밀번호", n)
     text, n = OTP_RE.subn(lambda m: m.group(1).rstrip("[") + OTP_MASK, text)
     count("인증번호", n)
+    # 숫자 6자리만 덩그러니 보낸 메시지는 인증 코드로 본다 ('815509')
+    if re.fullmatch(r"\s*\d{6}\s*", text):
+        text = OTP_MASK
+        count("인증번호", 1)
     if CRED_KW_RE.search(text):
         text, n = ID_RE.subn(lambda m: m.group(1) + m.group(2) + "[아이디]", text)
         count("아이디", n)
