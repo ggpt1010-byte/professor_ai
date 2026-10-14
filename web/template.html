@@ -467,7 +467,7 @@ function addActions(view, text, mood, ctx) {
 const ERRORS = {
   not_granted: "Claude 사용을 허용하지 않아 답장을 만들 수 없어요.",
   sampling_disabled: "이 계정에서는 Claude를 쓸 수 없어요.",
-  rate_limited: "요청이 많아요. 잠시 후 다시 눌러 주세요.",
+  rate_limited: "요청이 많거나 이 계정의 Claude 사용 한도에 닿았어요. 잠시 후 다시 눌러 주세요.",
   session_expired: "로그인이 만료됐어요. claude.ai에 다시 로그인해 주세요.",
   refused: "이 메시지에는 답장을 만들 수 없어요. 표현을 바꿔 보세요.",
   empty_completion: "빈 답장이 왔어요. 메시지를 조금 바꿔 다시 보내 주세요.",
@@ -505,7 +505,7 @@ async function ask(text, mood, ctx) {
     if (!e || e.code !== "cancelled") {
       view.status.hidden = false;
       view.status.className = "status error";
-      view.status.textContent = ERRORS[e && e.code] || "연결이 끊겼어요. 다시 예측을 눌러 주세요.";
+      view.status.textContent = (ERRORS[e && e.code] || "연결이 끊겼어요. 다시 예측을 눌러 주세요.") + (e && e.code ? ` (${e.code})` : "");
       if (e && (e.code === "not_granted" || e.code === "sampling_disabled")) disableSample();
     } else {
       view.status.hidden = false;
