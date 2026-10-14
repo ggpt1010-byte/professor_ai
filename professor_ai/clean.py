@@ -36,6 +36,13 @@ URL_PWD_RE = re.compile(r"([?&]pwd=)[^&\s]+")
 # One-time codes such as "인증번호 [760931]"
 OTP_RE = re.compile(r"(인증\s*번호\s*\[?)\d{4,8}(\]?)")
 OTP_MASK = "[인증번호]"
+# 줌 회의 번호: 'zoom.us/j/12345678901', '회의 ID: 123 4567 8901'
+ZOOM_URL_ID_RE = re.compile(r"(zoom\.us/j/)\d{9,11}")
+ZOOM_ID_RE = re.compile(r"((?:회의\s*ID|Meeting\s*ID)\s*[:：]?\s*(?:\[아이디\])?\s*)\d{3,4}(?:\s?\d{3,4}){1,2}", re.I)
+MEETING_MASK = "[회의번호]"
+# 연구실 서버 같은 내부 IP 주소
+IP_RE = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
+IP_MASK = "[IP]"
 BARE_NAME_RE = re.compile(r"^[가-힣]{2,4}$")
 # 통화 기록, 첨부만 있는 메시지 등 교수님 말투와 상관없는 시스템성 메시지
 SYSTEM_RE = re.compile(r"^(보이스톡|페이스톡)( 해요| 부재중| 취소| \d+:\d+)?$")
@@ -143,6 +150,12 @@ def mask_text(text: str, report: CleanReport | None = None) -> str:
     count("비밀번호", n)
     text, n = LAB_SECRET_RE.subn(SECRET_MASK, text)
     count("비밀번호", n)
+    text, n = ZOOM_URL_ID_RE.subn(lambda m: m.group(1) + MEETING_MASK, text)
+    count("회의번호", n)
+    text, n = ZOOM_ID_RE.subn(lambda m: m.group(1) + MEETING_MASK, text)
+    count("회의번호", n)
+    text, n = IP_RE.subn(IP_MASK, text)
+    count("IP", n)
     text, n = OTP_RE.subn(lambda m: m.group(1).rstrip("[") + OTP_MASK, text)
     count("인증번호", n)
     # 숫자 6자리만 덩그러니 보낸 메시지는 인증 코드로 본다 ('815509')

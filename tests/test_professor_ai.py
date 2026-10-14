@@ -152,3 +152,12 @@ def test_group_chat(tmp_path: Path, monkeypatch):
     assert store.list_students() == []
     out = cli.ask("김태현", "nn", "질문", dry_run=True)
     assert "### 단체방: AISL_전체톡방" in out and "성철이형: 네 알겠습니다" in out
+
+
+def test_masks_zoom_meeting_ids_and_internal_ips():
+    from professor_ai.clean import mask_text
+    out = mask_text("https://korea-ac-kr.zoom.us/j/81234567890?pwd=abc 회의 ID: 812 3456 7890")
+    assert "81234567890" not in out and "812 3456 7890" not in out
+    assert "[회의번호]" in out
+    out = mask_text(r"\\163.152.1.20\nas1\ISSCC 에 올렸습니다. 버전 1.2.3 그대로")
+    assert "163.152" not in out and "[IP]" in out and "1.2.3" in out
