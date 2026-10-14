@@ -25,6 +25,9 @@ COUNT_WORD_RE = re.compile(r"\d+(년|월|일|시|분|초|명|개|번|차|주|장
 BARE_SECRET_RE = re.compile(r"(?<![\w/@.])[A-Za-z]{2,}\d{2,}[%!@#$^&*]+(?![\w/])")
 ID_RE = re.compile(r"(?i)\b(id|아이디)(\s*[:=]\s*)(\S+)")
 URL_PWD_RE = re.compile(r"([?&]pwd=)[^&\s]+")
+# One-time codes such as "인증번호 [760931]"
+OTP_RE = re.compile(r"(인증\s*번호\s*\[?)\d{4,8}(\]?)")
+OTP_MASK = "[인증번호]"
 BARE_NAME_RE = re.compile(r"^[가-힣]{2,4}$")
 # 통화 기록, 첨부만 있는 메시지 등 교수님 말투와 상관없는 시스템성 메시지
 SYSTEM_RE = re.compile(r"^(보이스톡|페이스톡)( 해요| 부재중| 취소| \d+:\d+)?$")
@@ -130,6 +133,8 @@ def mask_text(text: str, report: CleanReport | None = None) -> str:
     count("비밀번호", n)
     text, n = BARE_SECRET_RE.subn(SECRET_MASK, text)
     count("비밀번호", n)
+    text, n = OTP_RE.subn(lambda m: m.group(1).rstrip("[") + OTP_MASK, text)
+    count("인증번호", n)
     if CRED_KW_RE.search(text):
         text, n = ID_RE.subn(lambda m: m.group(1) + m.group(2) + "[아이디]", text)
         count("아이디", n)

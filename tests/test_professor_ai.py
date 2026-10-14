@@ -105,6 +105,8 @@ def test_not_a_question():
         ("내 포탈 abcde500%", "내 포탈 [비밀번호]"),
         ("내년2월6일까지 쓰고 패스워드 아는 사람?", "내년2월6일까지 쓰고 패스워드 아는 사람?"),
         ("https://x.zoom.us/j/123?pwd=AbC1.2", "https://x.zoom.us/j/123?pwd=[비밀번호]"),
+        ("[NICE] 인증번호 [760931]를 입력해주세요.", "[NICE] 인증번호 [인증번호]를 입력해주세요."),
+        ("인증번호 6자리 보내주시면", "인증번호 6자리 보내주시면"),
     ],
 )
 def test_mask_credentials(text, expected):
