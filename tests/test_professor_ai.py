@@ -102,6 +102,7 @@ def test_not_a_question():
         ("email: me@korea.ac.kr password: abc123", "email: [이메일] password: [비밀번호]"),
         ("JSSC와 TVLSI 비번 abc2026", "JSSC와 TVLSI 비번 [비밀번호]"),
         ("연구재단 id 비번이 뭐지?", "연구재단 id 비번이 뭐지?"),
+        ("내 포탈 abcde500%", "내 포탈 [비밀번호]"),
         ("내년2월6일까지 쓰고 패스워드 아는 사람?", "내년2월6일까지 쓰고 패스워드 아는 사람?"),
         ("https://x.zoom.us/j/123?pwd=AbC1.2", "https://x.zoom.us/j/123?pwd=[비밀번호]"),
     ],

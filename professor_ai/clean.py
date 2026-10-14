@@ -21,6 +21,8 @@ CRED_KW_RE = re.compile(r"(?i)(비밀번호|비번|패스워드|password|passwd|
 SECRET_TOKEN_RE = re.compile(r"(?<![\w/])(?=\S*\d)(?=\S*[A-Za-z가-힣])[^\s:=]+")
 # '2월6일까지', '3명' 처럼 숫자 뒤에 단위가 붙은 낱말은 비밀번호가 아니다
 COUNT_WORD_RE = re.compile(r"\d+(년|월|일|시|분|초|명|개|번|차|주|장|층|호|원|점|등)")
+# 키워드 없이 툭 던진 비밀번호 모양 낱말 ('kilby500%'): 영문+숫자+특수문자
+BARE_SECRET_RE = re.compile(r"(?<![\w/@.])[A-Za-z]{2,}\d{2,}[%!@#$^&*]+(?![\w/])")
 ID_RE = re.compile(r"(?i)\b(id|아이디)(\s*[:=]\s*)(\S+)")
 URL_PWD_RE = re.compile(r"([?&]pwd=)[^&\s]+")
 BARE_NAME_RE = re.compile(r"^[가-힣]{2,4}$")
@@ -125,6 +127,8 @@ def mask_text(text: str, report: CleanReport | None = None) -> str:
     text, n = EMAIL_RE.subn(EMAIL_MASK, text)
     count("이메일", n)
     text, n = URL_PWD_RE.subn(lambda m: m.group(1) + SECRET_MASK, text)
+    count("비밀번호", n)
+    text, n = BARE_SECRET_RE.subn(SECRET_MASK, text)
     count("비밀번호", n)
     if CRED_KW_RE.search(text):
         text, n = ID_RE.subn(lambda m: m.group(1) + m.group(2) + "[아이디]", text)

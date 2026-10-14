@@ -73,3 +73,13 @@ python -m professor_ai ask nn "..." --student 홍길동   # 질문하는 학생 
 pip install -r requirements-dev.txt
 python -m pytest
 ```
+
+## 공유용 웹페이지 (API 키 없이)
+
+`web/template.html`은 claude.ai 아티팩트로 올리는 페이지입니다. 링크를 연 사람의 Claude 계정으로 답장을 만들기 때문에 API 키가 필요 없고, 페이지에서 한 질문은 저장되지 않습니다.
+
+페이지에는 원본 카톡 대신 `data/web_examples.json`(다른 학생 이름, 성적, 비밀번호, 사적인 대화를 뺀 교수님 답장 예시와 말투 요약)만 들어갑니다.
+
+```bash
+python web/build_page.py 페이지.html
+```
