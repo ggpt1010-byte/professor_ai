@@ -14,3 +14,4 @@ data/chats/*/messages.jsonl
 data/chats/*/meta.json
 data/web_examples.json
 web/index.html
+web/gpt/

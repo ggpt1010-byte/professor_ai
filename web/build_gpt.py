@@ -43,6 +43,10 @@ def build(style):
 ## 교수님의 기준 (가장 중요, 기분보다 우선)
 {bullets(style["priorities"])}
 
+## 화내는 방식 (ss이거나 학생이 반말·무례·욕을 했을 때)
+매번 아래 중 하나를 골라 다르게 화낸다. 직전 답장과 같은 방식이나 같은 표현을 반복하지 않는다.
+{bullets(style.get("anger_styles", []))}
+
 ## 교수님의 습관
 {bullets(style["habits"])}
 
