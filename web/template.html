@@ -99,6 +99,24 @@ legend { font-size: 13px; color: var(--muted); margin-bottom: 8px; padding: 0; }
 .mood[data-m="ss"] input:checked + label { border-color: var(--ss); background: var(--ss-soft); }
 .mood input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+/* Room + sender */
+.setup { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+@media (max-width: 520px) { .setup { grid-template-columns: minmax(0, 1fr); } }
+.seg { display: flex; border: 1.5px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--card); }
+.seg div { flex: 1; position: relative; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { display: block; text-align: center; padding: 8px 6px; cursor: pointer; font-weight: 500; color: var(--muted); }
+.seg div + div label { border-left: 1px solid var(--line); }
+.seg input:checked + label { background: var(--accent); color: var(--accent-ink); }
+.seg input:focus-visible + label { outline: 2px solid var(--ink); outline-offset: -3px; }
+.who { display: flex; gap: 8px; }
+select {
+  font: inherit; color: var(--ink); background: var(--card);
+  border: 1.5px solid var(--line); border-radius: 10px; padding: 7px 10px; flex: 1; min-width: 0;
+}
+select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.field-label { font-size: 13px; color: var(--muted); margin-bottom: 8px; display: block; }
+
 /* Thread */
 .thread { display: flex; flex-direction: column; gap: 18px; min-height: 120px; }
 .turn { display: flex; flex-direction: column; gap: 6px; }
@@ -129,6 +147,7 @@ legend { font-size: 13px; color: var(--muted); margin-bottom: 8px; padding: 0; }
 .tag.ff { color: var(--ff); background: var(--ff-soft); }
 .tag.nn { color: var(--nn); background: var(--nn-soft); }
 .tag.ss { color: var(--ss); background: var(--ss-soft); }
+.tag.room { color: var(--accent); background: transparent; border: 1px solid var(--line); }
 .tag.example { color: var(--muted); background: transparent; border: 1px dashed var(--line); }
 .prof .bubble { background: var(--card); border: 1px solid var(--line); border-top-left-radius: 4px; align-self: flex-start; }
 .prof .bubble.wait { color: var(--muted); font-style: italic; }
@@ -187,7 +206,7 @@ footer { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line)
   <header>
     <span class="eyebrow">AISL · 카톡 예상 답장</span>
     <h1>교수님 답장 예측기</h1>
-    <p class="lede">보낼 카톡을 적고 교수님 기분을 고르면, 실제 대화 기록에서 익힌 말투로 예상 답장을 보여 줘요.</p>
+    <p class="lede">보낼 카톡을 적고 교수님 기분과 대화방, 내 과정을 고르면, 실제 대화 기록과 교수님의 졸업·논문 기준으로 예상 답장을 보여 줘요.</p>
   </header>
 
   <fieldset>
@@ -198,6 +217,30 @@ footer { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line)
       <div class="mood" data-m="ss"><input type="radio" name="mood" id="mood-ss" value="ss"><label for="mood-ss"><span class="code">ss</span><span class="name">기분안좋음</span><span class="hint">거절, 되묻기, 지적</span></label></div>
     </div>
   </fieldset>
+
+  <div class="setup">
+    <fieldset>
+      <legend>보내는 곳</legend>
+      <div class="seg" role="radiogroup">
+        <div><input type="radio" name="room" id="room-dm" value="dm" checked><label for="room-dm">개인톡</label></div>
+        <div><input type="radio" name="room" id="room-group" value="group"><label for="room-group">전체톡</label></div>
+      </div>
+    </fieldset>
+    <div>
+      <span class="field-label" id="who-label">보내는 사람</span>
+      <div class="who" role="group" aria-labelledby="who-label">
+        <select id="degree" aria-label="과정">
+          <option value="석사">석사</option>
+          <option value="박사" selected>박사</option>
+          <option value="석박통합">석박통합</option>
+        </select>
+        <select id="year" aria-label="연차">
+          <option value="1">1년차</option><option value="2">2년차</option><option value="3" selected>3년차</option>
+          <option value="4">4년차</option><option value="5">5년차</option><option value="6">6년차 이상</option>
+        </select>
+      </div>
+    </div>
+  </div>
 
   <section class="thread" id="thread" aria-live="polite"></section>
 
@@ -225,6 +268,7 @@ footer { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line)
 <script>
 const STYLE = /*STYLE_DATA*/null;
 const MOOD_NAME = { ff: "기분좋음", nn: "평범", ss: "기분안좋음" };
+const ROOM_NAME = { dm: "개인톡", group: "전체톡" };
 
 const $ = (s) => document.querySelector(s);
 const thread = $("#thread");
@@ -243,6 +287,37 @@ function currentMood() {
   return document.querySelector('input[name="mood"]:checked').value;
 }
 
+function currentCtx() {
+  return {
+    room: document.querySelector('input[name="room"]:checked').value,
+    degree: $("#degree").value,
+    year: Number($("#year").value),
+  };
+}
+
+function senderText(ctx) {
+  const y = ctx.year >= 6 ? "6년차 이상" : `${ctx.year}년차`;
+  let note = "";
+  if (ctx.degree === "석박통합") note = ctx.year >= 3 ? " (3년차 이상이라 박사로 취급)" : " (아직 석사로 취급)";
+  else if (ctx.degree === "석사" && ctx.year >= 2) note = " (졸업을 앞둔 석사)";
+  else if (ctx.degree === "박사" && ctx.year >= 5) note = " (졸업을 앞둔 박사)";
+  return `${ctx.degree} ${y}${note}`;
+}
+
+// 선택을 이 브라우저에만 기억 (질문 내용은 저장하지 않음)
+try {
+  const saved = JSON.parse(localStorage.getItem("who") || "null");
+  if (saved) {
+    if (saved.degree) $("#degree").value = saved.degree;
+    if (saved.year) $("#year").value = String(saved.year);
+    if (saved.room) document.getElementById(`room-${saved.room}`).checked = true;
+  }
+} catch (_) {}
+function rememberWho() {
+  try { localStorage.setItem("who", JSON.stringify(currentCtx())); } catch (_) {}
+}
+for (const n of document.querySelectorAll("#degree, #year, input[name=room]")) n.addEventListener("change", rememberWho);
+
 function formatExample(e) {
   const lines = [];
   lines.push(e.s ? `학생: ${e.s}` : "(교수님이 먼저 보낸 메시지)");
@@ -250,24 +325,38 @@ function formatExample(e) {
   return lines.join("\n");
 }
 
-function buildPrompt(mood, text) {
-  const mine = STYLE.examples.filter((e) => e.mood === mood);
-  const others = STYLE.examples.filter((e) => e.mood !== mood);
+function buildPrompt(mood, text, ctx) {
+  const rank = (e) => (e.mood === mood ? 0 : 2) + (e.room === ctx.room ? 0 : 1);
+  const sorted = STYLE.examples.slice().sort((a, b) => rank(a) - rank(b));
+  const mine = sorted.filter((e) => e.mood === mood);
+  const others = sorted.filter((e) => e.mood !== mood);
+  const tagOf = (e) => `[${e.mood} · ${ROOM_NAME[e.room] || ""}]`;
   return [
     "너는 대학원 연구실 지도교수님이 카카오톡으로 학생에게 보낼 답장을 예측한다.",
-    "아래 말투 특징과 실제 대화 예시를 보고, 학생 메시지에 교수님이 지정된 기분일 때 보낼 법한 답장을 쓴다.",
+    "아래 연구실 정보, 교수님의 기준과 습관, 말투 특징, 실제 대화 예시를 보고, 학생 메시지에 교수님이 지정된 기분일 때 보낼 법한 답장을 쓴다.",
+    "",
+    "## 연구실",
+    ...STYLE.lab.map((t) => `- ${t}`),
+    "",
+    "## 교수님의 기준 (가장 중요)",
+    ...STYLE.priorities.map((t) => `- ${t}`),
+    "",
+    "## 교수님의 습관",
+    ...STYLE.habits.map((t) => `- ${t}`),
     "",
     "## 말투 특징",
     ...STYLE.traits.map((t) => `- ${t}`),
     "",
-    "## 이번 기분",
-    `${mood} · ${STYLE.moods[mood]}`,
+    "## 이번 상황",
+    `- 보내는 곳: ${STYLE.rooms[ctx.room]}`,
+    `- 보내는 학생: ${senderText(ctx)}`,
+    `- 교수님 기분: ${mood} · ${STYLE.moods[mood]}`,
     "",
-    `## 실제 예시: ${mood} (${MOOD_NAME[mood]})`,
-    mine.map(formatExample).join("\n\n"),
+    `## 실제 예시: ${mood} (${MOOD_NAME[mood]}), 같은 대화방 예시 먼저`,
+    mine.map((e) => `${tagOf(e)}\n${formatExample(e)}`).join("\n\n"),
     "",
     "## 참고: 다른 기분일 때의 예시",
-    others.map((e) => `[${e.mood}]\n${formatExample(e)}`).join("\n\n"),
+    others.map((e) => `${tagOf(e)}\n${formatExample(e)}`).join("\n\n"),
     "",
     "## 학생 메시지",
     text,
@@ -294,7 +383,7 @@ function el(tag, cls, text) {
   return n;
 }
 
-function renderTurn({ text, mood, example }) {
+function renderTurn({ text, mood, example, ctx }) {
   const turn = el("div", "turn");
   const me = el("div", "row me");
   me.append(el("div", "bubble", text));
@@ -306,6 +395,7 @@ function renderTurn({ text, mood, example }) {
   const name = el("div", "prof-name");
   name.append(el("span", "", "교수님"));
   name.append(el("span", `tag ${mood}`, `${mood} ${MOOD_NAME[mood]}`));
+  if (ctx) name.append(el("span", "tag room", example ? ROOM_NAME[ctx.room] : `${ROOM_NAME[ctx.room]} · ${senderText(ctx).replace(/ \(.*\)$/, "")}`));
   if (example) name.append(el("span", "tag example", "실제 기록 예시"));
   body.append(name);
   const bubbles = el("div", "prof-body");
@@ -330,19 +420,19 @@ function setBubbles(box, lines, waiting) {
   for (const l of lines) box.append(el("div", "bubble", l));
 }
 
-function addActions(view, text, mood) {
+function addActions(view, text, mood, ctx) {
   view.actions.replaceChildren();
   if (!sample) return;
   const again = el("button", "chip", "다시 예측");
   again.type = "button";
-  again.onclick = () => ask(text, mood);
+  again.onclick = () => ask(text, mood, ctx);
   view.actions.append(again);
   for (const m of ["ff", "nn", "ss"]) {
     if (m === mood) continue;
     const b = el("button", "chip");
     b.type = "button";
     b.append(el("span", "mono", m), document.createTextNode(` ${MOOD_NAME[m]}이면?`));
-    b.onclick = () => ask(text, m);
+    b.onclick = () => ask(text, m, ctx);
     view.actions.append(b);
   }
 }
@@ -363,15 +453,15 @@ function setBusy(on) {
   stopBtn.hidden = !on;
 }
 
-async function ask(text, mood) {
+async function ask(text, mood, ctx) {
   if (busy || !sample) return;
-  const view = renderTurn({ text, mood });
+  const view = renderTurn({ text, mood, ctx });
   setBubbles(view.bubbles, [], true);
   view.turn.scrollIntoView({ block: "nearest", behavior: "smooth" });
   ctl = new AbortController();
   setBusy(true);
   try {
-    const { text: out, truncated } = await sample(buildPrompt(mood, text), {
+    const { text: out, truncated } = await sample(buildPrompt(mood, text, ctx), {
       cache: false,
       signal: ctl.signal,
       onText: ({ text: t }) => {
@@ -396,7 +486,7 @@ async function ask(text, mood) {
     }
   } finally {
     setBusy(false);
-    addActions(view, text, mood);
+    addActions(view, text, mood, ctx);
   }
 }
 
@@ -413,7 +503,7 @@ form.addEventListener("submit", (ev) => {
   const text = msg.value.trim();
   if (!text || busy || !sample) return;
   msg.value = "";
-  ask(text, currentMood());
+  ask(text, currentMood(), currentCtx());
 });
 msg.addEventListener("keydown", (ev) => {
   if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); form.requestSubmit(); }
@@ -423,7 +513,7 @@ stopBtn.addEventListener("click", () => ctl && ctl.abort());
 // 처음 화면: 실제 기록에서 고른 예시 한 쌍
 (function showExample() {
   const ex = STYLE.examples.find((e) => e.mood === "ss" && e.s && e.s.includes("줌으로")) || STYLE.examples[0];
-  const view = renderTurn({ text: ex.s, mood: ex.mood, example: true });
+  const view = renderTurn({ text: ex.s, mood: ex.mood, example: true, ctx: { room: ex.room || "dm" } });
   setBubbles(view.bubbles, ex.p, false);
 })();
 
