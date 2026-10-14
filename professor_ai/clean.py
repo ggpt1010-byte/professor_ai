@@ -10,6 +10,7 @@ from pathlib import Path
 from .kakao import Message
 
 # 전화번호: 010-1234-5678, 02 3290 1357, 01012345678 ...
+INTL_PHONE_RE = re.compile(r"\+82[-. ]?\(?0?\)?\d{1,2}[-. )]?\d{3,4}[-. ]?\d{4}(?!\d)")
 PHONE_RE = re.compile(r"(?<![\w/=?&.-])0\d{1,2}[-. ]?\d{3,4}[-. ]?\d{4}(?!\d)")
 # 점수 목록 한 줄: '석예찬 (23) 3 3 3 7 5', '양재서 5 4 3 5 5 (22)', '성철현종 102 72 30'
 SCORE_LINE_RE = re.compile(r"^\s*[가-힣]{2,5}\s*(\(\d+\))?(\s+\d+(\.\d+)?){1,}\s*(\(\d+\))?\s*$")
@@ -129,6 +130,8 @@ def mask_text(text: str, report: CleanReport | None = None) -> str:
         if report is not None and n:
             report.masked[kind] += n
 
+    text, n = INTL_PHONE_RE.subn(PHONE_MASK, text)
+    count("전화번호", n)
     text, n = PHONE_RE.subn(PHONE_MASK, text)
     count("전화번호", n)
     text, n = re.subn(r"(내선\s*)\d{3,5}", lambda m: m.group(1) + PHONE_MASK, text)

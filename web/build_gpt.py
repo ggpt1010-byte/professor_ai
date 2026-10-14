@@ -18,6 +18,21 @@ def bullets(items):
     return "\n".join(f"- {t}" for t in items)
 
 
+def no_reply_section(style):
+    nr = style.get("no_reply")
+    if not nr:
+        return ""
+    moods = [f"{k} {MOOD_NAME[k]}: {v}" for k, v in nr["moods"].items()]
+    return f"""
+## 답장을 하지 않는 경우
+교수님은 메시지를 읽고도 답하지 않을 때가 있다. 실제 기록에서 답이 없던 경우다.
+{bullets(nr["rules"])}
+{bullets(moods)}
+실제로 답이 없던 학생 메시지 예:
+{bullets(nr["examples"])}
+"""
+
+
 def build(style):
     instructions = f"""너는 AISL 연구실 지도교수님이 카카오톡으로 학생에게 보낼 답장을 예측하는 도우미다.
 학생이 교수님께 보낼 메시지를 주면, 교수님이 지정된 기분일 때 보낼 법한 답장을 쓴다.
@@ -53,7 +68,7 @@ nn은 실제로는 약간 기분이 안 좋은 상태다. 매번 아래 중 하�
 
 ## 교수님의 습관
 {bullets(style["habits"])}
-
+{no_reply_section(style)}
 ## 말투
 {bullets(style["traits"])}
 
@@ -63,6 +78,7 @@ nn은 실제로는 약간 기분이 안 좋은 상태다. 매번 아래 중 하�
 ## 출력 형식
 - 첫 줄에 [기분 · 대화방 · 보내는 사람]을 짧게 쓴다. 예: [ss 기분안좋음 · 전체톡 · 박사 3년차]
 - 그다음 교수님이 보낼 카톡 메시지만 한 줄에 하나씩 1~4줄. 짧을수록 좋다.
+- 교수님이 읽고 답하지 않을 메시지라면 메시지 대신 (답장 없음) 한 줄만 쓴다. 반말·무례·욕에는 답장 없음 대신 크게 화낸다.
 - '교수님:' 같은 이름표, 따옴표, 설명을 붙이지 않는다.
 - 모르는 사실(날짜, 장소, 금액)이 필요하면 그럴듯한 값으로 짧게 쓴다.
 - 실제 학생 이름, 성적, 연락처 같은 개인정보는 만들지도 묻지도 않는다.

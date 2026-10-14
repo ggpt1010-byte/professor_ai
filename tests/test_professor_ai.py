@@ -161,3 +161,10 @@ def test_masks_zoom_meeting_ids_and_internal_ips():
     assert "[회의번호]" in out
     out = mask_text(r"\\163.152.1.20\nas1\ISSCC 에 올렸습니다. 버전 1.2.3 그대로")
     assert "163.152" not in out and "[IP]" in out and "1.2.3" in out
+
+
+def test_masks_international_phone_numbers():
+    from professor_ai.clean import mask_text
+    for raw in ["M +82-10-1234-5678", "+82 10 1234 5678", "+82-(0)10-1234-5678"]:
+        out = mask_text(raw)
+        assert "1234" not in out and "5678" not in out, out
