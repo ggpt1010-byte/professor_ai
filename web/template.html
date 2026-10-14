@@ -1,268 +1,262 @@
 <title>교수님 답장 예측기</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
 <style>
-/* Layout: one narrow column like a phone chat — header, mood dial, thread, composer pinned below. */
+/* Layout: a messenger chat room — top bar, settings strip, scrolling chat, input bar pinned to the bottom. */
 :root {
-  --paper: #eef1ef;
-  --card: #ffffff;
-  --ink: #17211d;
-  --muted: #5b6a64;
-  --line: #d3dbd7;
-  --mine: #d5eae3;
-  --accent: #136f5b;
-  --accent-ink: #ffffff;
+  --chat-bg: #bacee0;
+  --bar: #a9bdce;
+  --bar-ink: #1d1d1d;
+  --panel: rgba(255, 255, 255, 0.92);
+  --ink: #1d1d1d;
+  --muted: #556677;
+  --time: #556270;
+  --line: #9fb3c5;
+  --mine: #fee500;
+  --mine-ink: #1d1d1d;
+  --theirs: #ffffff;
+  --theirs-ink: #1d1d1d;
+  --pill: rgba(0, 0, 0, 0.4);
+  --pill-ink: #ffffff;
+  --avatar: #9bb0c4;
+  --input-bg: #ffffff;
+  --send: #fee500;
+  --send-ink: #1d1d1d;
   --ff: #b85a07;
-  --ff-soft: #fbeedd;
-  --nn: #475a54;
-  --nn-soft: #e4ebe8;
-  --ss: #b42318;
-  --ss-soft: #fbe4e1;
-  --font-display: "Gowun Batang", "Nanum Myeongjo", "Apple SD Gothic Neo", serif;
-  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --nn: #475a66;
+  --ss: #c0261b;
+  --font-body: "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", "Noto Sans KR", system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper: #111715; --card: #1a2320; --ink: #e5ece9; --muted: #92a39c; --line: #2b3632;
-    --mine: #1e3a32; --accent: #4fbf9f; --accent-ink: #0b1311;
-    --ff: #f2a453; --ff-soft: #3a2a17; --nn: #a9bbb4; --nn-soft: #26302d; --ss: #f27c70; --ss-soft: #3d2120;
+    --chat-bg: #1e2329; --bar: #262c33; --bar-ink: #eceff2; --panel: rgba(38, 44, 51, 0.95);
+    --ink: #eceff2; --muted: #a3adb8; --time: #9aa4ae; --line: #3a434d;
+    --mine: #fee500; --mine-ink: #1d1d1d; --theirs: #343b43; --theirs-ink: #eceff2;
+    --pill: rgba(255, 255, 255, 0.12); --pill-ink: #d9dee3; --avatar: #4a5560;
+    --input-bg: #262c33; --send: #fee500; --send-ink: #1d1d1d;
+    --ff: #f2a453; --nn: #b4c0cb; --ss: #ff8a7d;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --paper: #111715; --card: #1a2320; --ink: #e5ece9; --muted: #92a39c; --line: #2b3632;
-  --mine: #1e3a32; --accent: #4fbf9f; --accent-ink: #0b1311;
-  --ff: #f2a453; --ff-soft: #3a2a17; --nn: #a9bbb4; --nn-soft: #26302d; --ss: #f27c70; --ss-soft: #3d2120;
+  --chat-bg: #1e2329; --bar: #262c33; --bar-ink: #eceff2; --panel: rgba(38, 44, 51, 0.95);
+  --ink: #eceff2; --muted: #a3adb8; --time: #9aa4ae; --line: #3a434d;
+  --mine: #fee500; --mine-ink: #1d1d1d; --theirs: #343b43; --theirs-ink: #eceff2;
+  --pill: rgba(255, 255, 255, 0.12); --pill-ink: #d9dee3; --avatar: #4a5560;
+  --input-bg: #262c33; --send: #fee500; --send-ink: #1d1d1d;
+  --ff: #f2a453; --nn: #b4c0cb; --ss: #ff8a7d;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
 body {
-  background: var(--paper);
+  background: var(--chat-bg);
   color: var(--ink);
   font-family: var(--font-body);
-  font-size: 15px;
-  line-height: 1.55;
+  font-size: 14px;
+  line-height: 1.45;
 }
-.wrap {
-  max-width: 640px;
+.app {
+  max-width: 520px;
   margin: 0 auto;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 28px 40px;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  background: var(--chat-bg);
 }
-header { display: flex; flex-direction: column; gap: 6px; }
-.eyebrow {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-h1 {
-  font-family: var(--font-display);
-  font-size: clamp(28px, 7vw, 36px);
-  line-height: 1.15;
-  margin: 0;
-  text-wrap: balance;
-}
-.lede { margin: 0; color: var(--muted); max-width: 52ch; }
 
-/* Mood dial */
-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
-legend { font-size: 13px; color: var(--muted); margin-bottom: 8px; padding: 0; }
-.moods { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.mood input { position: absolute; opacity: 0; pointer-events: none; }
-.mood label {
-  display: flex; flex-direction: column; gap: 2px;
+/* Top bar */
+.topbar {
+  flex: none;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px));
+  background: var(--chat-bg);
+  color: var(--bar-ink);
+}
+.topbar .back { font-size: 26px; line-height: 1; font-weight: 300; }
+.topbar h1 { font-size: 17px; font-weight: 700; margin: 0; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar h1 .count { font-weight: 500; color: var(--muted); margin-left: 4px; }
+.gear {
+  font: inherit; font-size: 13px; color: var(--bar-ink);
+  background: transparent; border: 1px solid var(--line); border-radius: 999px;
+  padding: 4px 10px; cursor: pointer;
+}
+.gear:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* Settings strip (looks like a pinned notice) */
+.settings {
+  flex: none;
+  margin: 0 max(12px, env(safe-area-inset-left, 0px)) 6px;
   padding: 10px 12px;
-  border: 1.5px solid var(--line);
-  border-radius: 10px;
-  background: var(--card);
-  cursor: pointer;
-  min-height: 100%;
-  transition: border-color .15s, background .15s;
+  background: var(--panel);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  display: flex; flex-direction: column; gap: 8px;
 }
-.mood .code { font-family: var(--font-mono); font-weight: 600; font-size: 18px; }
-.mood .name { font-weight: 600; font-size: 14px; }
-.mood .hint { font-size: 12px; color: var(--muted); line-height: 1.4; }
-.mood[data-m="ff"] .code { color: var(--ff); }
-.mood[data-m="nn"] .code { color: var(--nn); }
-.mood[data-m="ss"] .code { color: var(--ss); }
-.mood[data-m="ff"] input:checked + label { border-color: var(--ff); background: var(--ff-soft); }
-.mood[data-m="nn"] input:checked + label { border-color: var(--nn); background: var(--nn-soft); }
-.mood[data-m="ss"] input:checked + label { border-color: var(--ss); background: var(--ss-soft); }
-.mood input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-/* Room + sender */
-.setup { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
-@media (max-width: 520px) { .setup { grid-template-columns: minmax(0, 1fr); } }
-.seg { display: flex; border: 1.5px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--card); }
-.seg div { flex: 1; position: relative; }
+.settings[hidden] { display: none; }
+.srow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.slabel { font-size: 12px; color: var(--muted); width: 44px; flex: none; }
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: contents; }
+legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.seg { display: flex; flex: 1; min-width: 0; gap: 4px; }
+.seg > div { flex: 1; position: relative; min-width: 0; }
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
-.seg label { display: block; text-align: center; padding: 8px 6px; cursor: pointer; font-weight: 500; color: var(--muted); }
-.seg div + div label { border-left: 1px solid var(--line); }
-.seg input:checked + label { background: var(--accent); color: var(--accent-ink); }
-.seg input:focus-visible + label { outline: 2px solid var(--ink); outline-offset: -3px; }
-.who { display: flex; gap: 8px; }
-select {
-  font: inherit; color: var(--ink); background: var(--card);
-  border: 1.5px solid var(--line); border-radius: 10px; padding: 7px 10px; flex: 1; min-width: 0;
+.seg label {
+  display: block; text-align: center; padding: 5px 4px; cursor: pointer;
+  border-radius: 8px; border: 1px solid var(--line); color: var(--muted);
+  font-size: 13px; white-space: nowrap;
 }
-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.field-label { font-size: 13px; color: var(--muted); margin-bottom: 8px; display: block; }
+.seg label b { font-weight: 700; margin-right: 3px; }
+.seg input:checked + label { background: var(--mine); color: var(--mine-ink); border-color: transparent; font-weight: 600; }
+.seg input:focus-visible + label { outline: 2px solid var(--ink); outline-offset: 1px; }
+.seg.moods [data-m="ff"] input:not(:checked) + label b { color: var(--ff); }
+.seg.moods [data-m="nn"] input:not(:checked) + label b { color: var(--nn); }
+.seg.moods [data-m="ss"] input:not(:checked) + label b { color: var(--ss); }
+select {
+  font: inherit; font-size: 13px; color: var(--ink); background: transparent;
+  border: 1px solid var(--line); border-radius: 8px; padding: 4px 6px; min-width: 0; flex: 1;
+}
+select:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
 
-/* Thread */
-.thread { display: flex; flex-direction: column; gap: 18px; min-height: 120px; }
-.turn { display: flex; flex-direction: column; gap: 6px; }
-.row { display: flex; }
-.row.me { justify-content: flex-end; }
+/* Chat */
+.chat {
+  flex: 1; min-height: 0; overflow-y: auto;
+  padding: 8px max(12px, env(safe-area-inset-right, 0px)) 16px max(12px, env(safe-area-inset-left, 0px));
+  display: flex; flex-direction: column; gap: 10px;
+}
+.sys { align-self: center; text-align: center; max-width: 92%; }
+.sys span {
+  display: inline-block; background: var(--pill); color: var(--pill-ink);
+  font-size: 12px; padding: 3px 12px; border-radius: 999px;
+}
+.sys.notice span { background: rgba(192, 38, 27, 0.85); color: #fff; }
+.thread, .turn { display: flex; flex-direction: column; gap: 12px; }
+.msgrow { display: flex; align-items: flex-end; gap: 5px; }
+.msgrow.me { justify-content: flex-end; }
+.time { font-size: 11px; color: var(--time); flex: none; white-space: nowrap; }
 .bubble {
-  max-width: 82%;
-  padding: 8px 12px;
-  border-radius: 14px;
+  max-width: 72%;
+  padding: 7px 10px;
+  border-radius: 12px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   min-width: 0;
+  position: relative;
 }
-.me .bubble { background: var(--mine); border-bottom-right-radius: 4px; }
+.me .bubble { background: var(--mine); color: var(--mine-ink); }
+.me .bubble.first { border-top-right-radius: 3px; }
 .prof { display: flex; gap: 8px; align-items: flex-start; }
 .avatar {
-  flex: none; width: 34px; height: 34px; border-radius: 12px;
-  display: grid; place-items: center;
-  font-family: var(--font-display); font-weight: 700; font-size: 15px;
-  background: var(--card); border: 1px solid var(--line); color: var(--muted);
+  flex: none; width: 40px; height: 40px; border-radius: 15px;
+  background: var(--avatar); color: #fff;
+  display: grid; place-items: center; font-weight: 700; font-size: 15px;
 }
 .prof-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
-.prof-name { font-size: 12px; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.tag {
-  font-family: var(--font-mono); font-size: 11px; font-weight: 600;
-  padding: 1px 7px; border-radius: 999px;
-}
-.tag.ff { color: var(--ff); background: var(--ff-soft); }
-.tag.nn { color: var(--nn); background: var(--nn-soft); }
-.tag.ss { color: var(--ss); background: var(--ss-soft); }
-.tag.room { color: var(--accent); background: transparent; border: 1px solid var(--line); }
-.tag.example { color: var(--muted); background: transparent; border: 1px dashed var(--line); }
-.prof .bubble { background: var(--card); border: 1px solid var(--line); border-top-left-radius: 4px; align-self: flex-start; }
-.prof .bubble.wait { color: var(--muted); font-style: italic; }
+.prof-name { font-size: 12px; color: var(--ink); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.mtag { font-size: 11px; font-weight: 700; }
+.mtag.ff { color: var(--ff); }
+.mtag.nn { color: var(--nn); }
+.mtag.ss { color: var(--ss); }
+.xtag { font-size: 11px; color: var(--muted); }
+.lines { display: flex; flex-direction: column; gap: 4px; }
+.prof .bubble { background: var(--theirs); color: var(--theirs-ink); max-width: 80%; }
+.prof .bubble.first { border-top-left-radius: 3px; }
+.prof .bubble.wait { color: var(--muted); }
 .actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
 .chip {
   font: inherit; font-size: 12px;
-  border: 1px solid var(--line); background: transparent; color: var(--muted);
-  padding: 3px 10px; border-radius: 999px; cursor: pointer;
+  border: 0; background: var(--panel); color: var(--ink);
+  padding: 4px 10px; border-radius: 999px; cursor: pointer;
 }
-.chip:hover { color: var(--ink); border-color: var(--muted); }
-.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.chip .mono { font-family: var(--font-mono); font-weight: 600; }
-.note { font-size: 12px; color: var(--muted); }
-.error { font-size: 13px; color: var(--ss); }
+.chip:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.chip b { font-weight: 700; }
+.status { font-size: 12px; color: var(--muted); }
+.status.error { color: var(--ss); }
 
-/* Composer */
+/* Input bar */
 .composer {
-  display: flex; flex-direction: column; gap: 8px;
-  padding: 12px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 14px;
+  flex: none;
+  display: flex; align-items: flex-end; gap: 8px;
+  padding: 8px max(10px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px));
+  background: var(--input-bg);
 }
 textarea {
-  font: inherit; color: var(--ink); background: transparent;
-  border: 0; resize: vertical; min-height: 72px; width: 100%;
-  outline: none;
+  flex: 1; min-width: 0;
+  font: inherit; font-size: 15px; color: var(--ink); background: transparent;
+  border: 0; resize: none; outline: none;
+  height: 40px; max-height: 120px; padding: 9px 4px;
 }
-.composer:focus-within { border-color: var(--accent); }
-.bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
-.send {
-  font: inherit; font-weight: 600;
-  background: var(--accent); color: var(--accent-ink);
-  border: 0; border-radius: 10px; padding: 9px 16px; cursor: pointer;
+.send, .stop {
+  flex: none; font: inherit; font-weight: 600; font-size: 14px;
+  border: 0; border-radius: 8px; padding: 9px 14px; cursor: pointer;
 }
-.send:disabled { opacity: .5; cursor: default; }
-.send:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-.stop { font: inherit; background: transparent; color: var(--muted); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; cursor: pointer; }
-.privacy { font-size: 12px; color: var(--muted); }
-.notice {
-  font-size: 13px; padding: 10px 12px; border-radius: 10px;
-  background: var(--ss-soft); color: var(--ink);
-}
-footer { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 4px; }
-@media (max-width: 420px) {
-  .mood .hint { display: none; }
-  .bubble { max-width: 90%; }
-}
+.send { background: var(--send); color: var(--send-ink); }
+.send:disabled { background: var(--line); color: var(--muted); cursor: default; }
+.stop { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+.send:focus-visible, .stop:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 @media (prefers-reduced-motion: no-preference) {
-  .turn { animation: rise .25s ease-out; }
+  .turn { animation: rise .2s ease-out; }
   @keyframes rise { from { transform: translateY(4px); opacity: .6; } to { transform: none; opacity: 1; } }
 }
 </style>
 
-<div class="wrap">
-  <header>
-    <span class="eyebrow">AISL · 카톡 예상 답장</span>
-    <h1>교수님 답장 예측기</h1>
-    <p class="lede">보낼 카톡을 적고 교수님 기분과 대화방, 내 과정을 고르면, 실제 대화 기록과 교수님의 졸업·논문 기준으로 예상 답장을 보여 줘요.</p>
+<div class="app">
+  <header class="topbar">
+    <span class="back" aria-hidden="true">‹</span>
+    <h1 id="room-title">교수님</h1>
+    <button type="button" class="gear" id="gear" aria-expanded="true" aria-controls="settings">설정</button>
   </header>
 
-  <fieldset>
-    <legend>교수님 기분</legend>
-    <div class="moods" role="radiogroup">
-      <div class="mood" data-m="ff"><input type="radio" name="mood" id="mood-ff" value="ff"><label for="mood-ff"><span class="code">ff</span><span class="name">기분좋음</span><span class="hint">너그럽고 한마디 덧붙임</span></label></div>
-      <div class="mood" data-m="nn"><input type="radio" name="mood" id="mood-nn" value="nn" checked><label for="mood-nn"><span class="code">nn</span><span class="name">평범</span><span class="hint">짧은 지시, 확인</span></label></div>
-      <div class="mood" data-m="ss"><input type="radio" name="mood" id="mood-ss" value="ss"><label for="mood-ss"><span class="code">ss</span><span class="name">기분안좋음</span><span class="hint">거절, 되묻기, 지적</span></label></div>
+  <div class="settings" id="settings">
+    <div class="srow">
+      <span class="slabel" id="mood-label">기분</span>
+      <fieldset>
+        <legend>교수님 기분</legend>
+        <div class="seg moods" role="radiogroup" aria-labelledby="mood-label">
+          <div data-m="ff"><input type="radio" name="mood" id="mood-ff" value="ff"><label for="mood-ff"><b>ff</b>좋음</label></div>
+          <div data-m="nn"><input type="radio" name="mood" id="mood-nn" value="nn" checked><label for="mood-nn"><b>nn</b>평범</label></div>
+          <div data-m="ss"><input type="radio" name="mood" id="mood-ss" value="ss"><label for="mood-ss"><b>ss</b>안좋음</label></div>
+        </div>
+      </fieldset>
     </div>
-  </fieldset>
-
-  <div class="setup">
-    <fieldset>
-      <legend>보내는 곳</legend>
-      <div class="seg" role="radiogroup">
-        <div><input type="radio" name="room" id="room-dm" value="dm" checked><label for="room-dm">개인톡</label></div>
-        <div><input type="radio" name="room" id="room-group" value="group"><label for="room-group">전체톡</label></div>
-      </div>
-    </fieldset>
-    <div>
-      <span class="field-label" id="who-label">보내는 사람</span>
-      <div class="who" role="group" aria-labelledby="who-label">
-        <select id="degree" aria-label="과정">
-          <option value="석사">석사</option>
-          <option value="박사" selected>박사</option>
-          <option value="석박통합">석박통합</option>
-        </select>
-        <select id="year" aria-label="연차">
-          <option value="1">1년차</option><option value="2">2년차</option><option value="3" selected>3년차</option>
-          <option value="4">4년차</option><option value="5">5년차</option><option value="6">6년차 이상</option>
-        </select>
-      </div>
+    <div class="srow">
+      <span class="slabel" id="room-label">대화방</span>
+      <fieldset>
+        <legend>보내는 곳</legend>
+        <div class="seg" role="radiogroup" aria-labelledby="room-label">
+          <div><input type="radio" name="room" id="room-dm" value="dm" checked><label for="room-dm">개인톡</label></div>
+          <div><input type="radio" name="room" id="room-group" value="group"><label for="room-group">전체톡</label></div>
+        </div>
+      </fieldset>
+    </div>
+    <div class="srow">
+      <span class="slabel" id="who-label">나</span>
+      <select id="degree" aria-label="과정">
+        <option value="석사">석사</option>
+        <option value="박사" selected>박사</option>
+        <option value="석박통합">석박통합</option>
+      </select>
+      <select id="year" aria-label="연차">
+        <option value="1">1년차</option><option value="2">2년차</option><option value="3" selected>3년차</option>
+        <option value="4">4년차</option><option value="5">5년차</option><option value="6">6년차 이상</option>
+      </select>
     </div>
   </div>
 
-  <section class="thread" id="thread" aria-live="polite"></section>
-
-  <div id="unavailable" class="notice" hidden>이 화면에서는 Claude에 연결할 수 없어요. claude.ai에 로그인한 상태에서 링크를 열어 주세요.</div>
+  <main class="chat" id="chat" aria-live="polite">
+    <div class="sys"><span id="today"></span></div>
+    <div class="sys"><span>AI 예측 답장이에요. 교수님이 실제로 한 말이 아니에요.</span></div>
+    <div class="sys"><span>보낸 메시지는 저장되지 않고, 보는 사람의 Claude 사용량이 쓰여요.</span></div>
+    <div class="sys"><span id="stamp"></span></div>
+    <section id="thread" class="thread"></section>
+    <div id="unavailable" class="sys notice" hidden><span>이 화면에서는 Claude에 연결할 수 없어요. claude.ai에 로그인한 상태에서 열어 주세요.</span></div>
+  </main>
 
   <form class="composer" id="composer">
-    <label for="msg" class="note">교수님께 보낼 메시지</label>
-    <textarea id="msg" placeholder="예: 교수님 다음주 금요일에 학회 발표 연습을 해도 될까요?"></textarea>
-    <div class="bar">
-      <span class="privacy">질문은 저장되지 않아요. 새로고침하면 사라져요.</span>
-      <span style="display:flex; gap:6px;">
-        <button type="button" class="stop" id="stop" hidden>멈추기</button>
-        <button type="submit" class="send" id="send">예상 답장 받기</button>
-      </span>
-    </div>
+    <label for="msg" class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">교수님께 보낼 메시지</label>
+    <textarea id="msg" rows="1" placeholder="메시지 입력"></textarea>
+    <button type="button" class="stop" id="stop" hidden>멈추기</button>
+    <button type="submit" class="send" id="send">전송</button>
   </form>
-
-  <footer>
-    <span>AI가 만든 예측일 뿐, 교수님이 실제로 한 말이 아니에요.</span>
-    <span>답장을 만들 때 보는 사람의 Claude 사용량이 쓰여요. 처음 한 번은 허용할지 물어봐요.</span>
-    <span id="stamp"></span>
-  </footer>
 </div>
 
 <script>
@@ -272,6 +266,7 @@ const ROOM_NAME = { dm: "개인톡", group: "전체톡" };
 
 const $ = (s) => document.querySelector(s);
 const thread = $("#thread");
+const chat = $("#chat");
 const form = $("#composer");
 const msg = $("#msg");
 const sendBtn = $("#send");
@@ -282,6 +277,28 @@ let busy = false;
 let ctl = null;
 
 $("#stamp").textContent = `말투 예시 ${STYLE.examples.length}개 · 마지막 학습 ${STYLE.updated}`;
+$("#today").textContent = new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
+
+function nowTime() {
+  return new Date().toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" });
+}
+
+function setTitle() {
+  const room = document.querySelector('input[name="room"]:checked').value;
+  const t = $("#room-title");
+  t.replaceChildren();
+  if (room === "group") {
+    t.append(document.createTextNode("AISL 전체톡"));
+  } else {
+    t.append(document.createTextNode("교수님"));
+  }
+}
+
+$("#gear").addEventListener("click", () => {
+  const s = $("#settings");
+  s.hidden = !s.hidden;
+  $("#gear").setAttribute("aria-expanded", String(!s.hidden));
+});
 
 function currentMood() {
   return document.querySelector('input[name="mood"]:checked').value;
@@ -316,7 +333,7 @@ try {
 function rememberWho() {
   try { localStorage.setItem("who", JSON.stringify(currentCtx())); } catch (_) {}
 }
-for (const n of document.querySelectorAll("#degree, #year, input[name=room]")) n.addEventListener("change", rememberWho);
+for (const n of document.querySelectorAll("#degree, #year, input[name=room]")) n.addEventListener("change", () => { rememberWho(); setTitle(); });
 
 function formatExample(e) {
   const lines = [];
@@ -385,8 +402,10 @@ function el(tag, cls, text) {
 
 function renderTurn({ text, mood, example, ctx }) {
   const turn = el("div", "turn");
-  const me = el("div", "row me");
-  me.append(el("div", "bubble", text));
+  const time = example ? "" : nowTime();
+  const me = el("div", "msgrow me");
+  if (time) me.append(el("span", "time", time));
+  me.append(el("div", "bubble first", text));
   turn.append(me);
 
   const prof = el("div", "prof");
@@ -394,13 +413,13 @@ function renderTurn({ text, mood, example, ctx }) {
   const body = el("div", "prof-body");
   const name = el("div", "prof-name");
   name.append(el("span", "", "교수님"));
-  name.append(el("span", `tag ${mood}`, `${mood} ${MOOD_NAME[mood]}`));
-  if (ctx) name.append(el("span", "tag room", example ? ROOM_NAME[ctx.room] : `${ROOM_NAME[ctx.room]} · ${senderText(ctx).replace(/ \(.*\)$/, "")}`));
-  if (example) name.append(el("span", "tag example", "실제 기록 예시"));
+  name.append(el("span", `mtag ${mood}`, `${mood} ${MOOD_NAME[mood]}`));
+  if (ctx) name.append(el("span", "xtag", example ? `${ROOM_NAME[ctx.room]} 실제 기록` : `${ROOM_NAME[ctx.room]} · ${senderText(ctx).replace(/ \(.*\)$/, "")}`));
   body.append(name);
-  const bubbles = el("div", "prof-body");
+  const bubbles = el("div", "lines");
+  bubbles.dataset.time = time;
   body.append(bubbles);
-  const status = el("div", "note");
+  const status = el("div", "status");
   status.hidden = true;
   body.append(status);
   const actions = el("div", "actions");
@@ -414,10 +433,18 @@ function renderTurn({ text, mood, example, ctx }) {
 function setBubbles(box, lines, waiting) {
   box.replaceChildren();
   if (waiting) {
-    box.append(el("div", "bubble wait", "생각 중…"));
+    const row = el("div", "msgrow");
+    row.append(el("div", "bubble first wait", "입력 중…"));
+    box.append(row);
     return;
   }
-  for (const l of lines) box.append(el("div", "bubble", l));
+  lines.forEach((l, i) => {
+    const row = el("div", "msgrow");
+    row.append(el("div", i === 0 ? "bubble first" : "bubble", l));
+    if (i === lines.length - 1 && box.dataset.time) row.append(el("span", "time", box.dataset.time));
+    box.append(row);
+  });
+  chat.scrollTop = chat.scrollHeight;
 }
 
 function addActions(view, text, mood, ctx) {
@@ -431,7 +458,7 @@ function addActions(view, text, mood, ctx) {
     if (m === mood) continue;
     const b = el("button", "chip");
     b.type = "button";
-    b.append(el("span", "mono", m), document.createTextNode(` ${MOOD_NAME[m]}이면?`));
+    b.append(el("b", "", m), document.createTextNode(` ${MOOD_NAME[m]}이면?`));
     b.onclick = () => ask(text, m, ctx);
     view.actions.append(b);
   }
@@ -457,7 +484,7 @@ async function ask(text, mood, ctx) {
   if (busy || !sample) return;
   const view = renderTurn({ text, mood, ctx });
   setBubbles(view.bubbles, [], true);
-  view.turn.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  chat.scrollTop = chat.scrollHeight;
   ctl = new AbortController();
   setBusy(true);
   try {
@@ -477,7 +504,7 @@ async function ask(text, mood, ctx) {
     else view.bubbles.replaceChildren();
     if (!e || e.code !== "cancelled") {
       view.status.hidden = false;
-      view.status.className = "error";
+      view.status.className = "status error";
       view.status.textContent = ERRORS[e && e.code] || "연결이 끊겼어요. 다시 예측을 눌러 주세요.";
       if (e && (e.code === "not_granted" || e.code === "sampling_disabled")) disableSample();
     } else {
@@ -503,10 +530,15 @@ form.addEventListener("submit", (ev) => {
   const text = msg.value.trim();
   if (!text || busy || !sample) return;
   msg.value = "";
+  msg.style.height = "40px";
   ask(text, currentMood(), currentCtx());
 });
 msg.addEventListener("keydown", (ev) => {
-  if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); form.requestSubmit(); }
+  if (ev.key === "Enter" && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); form.requestSubmit(); }
+});
+msg.addEventListener("input", () => {
+  msg.style.height = "40px";
+  msg.style.height = Math.min(msg.scrollHeight, 120) + "px";
 });
 stopBtn.addEventListener("click", () => ctl && ctl.abort());
 
@@ -517,6 +549,7 @@ stopBtn.addEventListener("click", () => ctl && ctl.abort());
   setBubbles(view.bubbles, ex.p, false);
 })();
 
+setTitle();
 sendBtn.disabled = true;
 (async () => {
   try {
