@@ -342,18 +342,19 @@ function formatExample(e) {
   return lines.join("\n");
 }
 
-let lastAnger = -1;
-function pickAnger() {
-  const list = STYLE.anger_styles || [];
+const lastPick = {};
+function pickFrom(key) {
+  const list = STYLE[key] || [];
   if (!list.length) return "";
   let i = Math.floor(Math.random() * list.length);
-  if (list.length > 1 && i === lastAnger) i = (i + 1) % list.length;
-  lastAnger = i;
+  if (list.length > 1 && i === lastPick[key]) i = (i + 1) % list.length;
+  lastPick[key] = i;
   return list[i];
 }
 
 function buildPrompt(mood, text, ctx) {
-  const anger = pickAnger();
+  const anger = pickFrom("anger_styles");
+  const edge = mood === "nn" ? pickFrom("nn_edges") : "";
   const rank = (e) => (e.mood === mood ? 0 : 2) + (e.room === ctx.room ? 0 : 1);
   const sorted = STYLE.examples.slice().sort((a, b) => rank(a) - rank(b));
   const mine = sorted.filter((e) => e.mood === mood);
@@ -379,7 +380,13 @@ function buildPrompt(mood, text, ctx) {
     `- 보내는 곳: ${STYLE.rooms[ctx.room]}`,
     `- 보내는 학생: ${senderText(ctx)}`,
     `- 교수님 기분: ${mood} · ${STYLE.moods[mood]}`,
-    ...(anger ? [`- 이번에 화를 낸다면 이 방식으로: ${anger}`, "  (ss이거나 학생이 반말·무례·욕을 했을 때만 쓴다. ff·nn이고 학생이 예의 바르면 무시한다.)"] : []),
+    ...(edge ? [`- 이번 nn 답장의 날카로움: ${edge}`] : []),
+    ...(anger
+      ? mood === "ss"
+        ? [`- 이번에 화내는 방식 (반드시 쓴다, 세게): ${anger}`]
+        : [`- 학생이 반말·무례·욕을 했다면 이 방식으로 대노한다: ${anger}`, "  (학생이 예의 바르면 이 줄은 무시한다.)"]
+      : []),
+    "- 이 페이지의 기분은 실제 예시의 기분 표시보다 한 단계 더 날카롭다. 예시는 말투와 길이만 참고하고, 기분의 세기는 위 기분 설명을 따른다.",
     "",
     `## 실제 예시: ${mood} (${MOOD_NAME[mood]}), 같은 대화방 예시 먼저`,
     mine.map((e) => `${tagOf(e)}\n${formatExample(e)}`).join("\n\n"),
