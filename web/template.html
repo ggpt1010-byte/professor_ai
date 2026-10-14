@@ -82,6 +82,34 @@ body {
 }
 .gear:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
+/* 정리본 overlay: a full-height reading panel over the chat room */
+.notes {
+  position: fixed; inset: 0; z-index: 10;
+  max-width: 520px; margin: 0 auto;
+  display: flex; flex-direction: column;
+  background: var(--chat-bg);
+}
+.notes[hidden] { display: none; }
+.notes-body {
+  flex: 1; min-height: 0; overflow-y: auto;
+  margin: 0 max(12px, env(safe-area-inset-left, 0px)) 12px;
+  padding: 14px 16px 24px;
+  background: var(--panel); border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  font-size: 14px; line-height: 1.6;
+}
+.notes-body h2 { font-size: 16px; margin: 22px 0 6px; padding-top: 12px; border-top: 1px solid var(--line); }
+.notes-body h2:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.notes-body h3 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); }
+.notes-body p { margin: 0 0 8px; }
+.notes-body ul { margin: 0 0 8px; padding-left: 18px; }
+.notes-body .tw { overflow-x: auto; margin: 0 0 10px; }
+.notes-body table { border-collapse: collapse; width: 100%; font-size: 13px; line-height: 1.45; }
+.notes-body th, .notes-body td { border-top: 1px solid var(--line); padding: 6px 6px; text-align: left; vertical-align: top; word-break: keep-all; overflow-wrap: break-word; }
+.notes-body th { font-size: 12px; color: var(--muted); font-weight: 600; border-top: 0; }
+.notes-body td:last-child { color: var(--muted); }
+.notes-body strong { color: var(--ss); font-weight: 600; }
+
 /* Settings strip (looks like a pinned notice) */
 .settings {
   flex: none;
@@ -203,6 +231,7 @@ textarea {
   <header class="topbar">
     <span class="back" aria-hidden="true">‹</span>
     <h1 id="room-title">교수님</h1>
+    <button type="button" class="gear" id="open-notes" aria-controls="notes" hidden>정리본</button>
     <button type="button" class="gear" id="gear" aria-expanded="true" aria-controls="settings">설정</button>
   </header>
 
@@ -259,6 +288,14 @@ textarea {
   </form>
 </div>
 
+<section class="notes" id="notes" hidden aria-labelledby="notes-title">
+  <header class="topbar">
+    <button type="button" class="gear" id="close-notes">‹ 대화방</button>
+    <h1 id="notes-title">교수님 특성 · 연구실 규칙</h1>
+  </header>
+  <div class="notes-body" id="notes-body"></div>
+</section>
+
 <script>
 const STYLE = /*STYLE_DATA*/null;
 const MOOD_NAME = { ff: "기분좋음", nn: "평범", ss: "기분안좋음" };
@@ -292,6 +329,55 @@ function setTitle() {
   } else {
     t.append(document.createTextNode("교수님"));
   }
+}
+
+// 정리본: a small markdown subset (headings, paragraphs, bullets, tables, **bold**) from data/summary.md
+function mdInline(t) {
+  const esc = t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return esc.replace(/\\([~*_|])/g, "$1").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+}
+function renderNotes(md) {
+  const out = [];
+  const lines = md.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const ln = lines[i].trim();
+    if (!ln) continue;
+    let m;
+    if ((m = ln.match(/^(#{2,3})\s+(.*)$/))) {
+      out.push(`<h${m[1].length}>${mdInline(m[2])}</h${m[1].length}>`);
+    } else if (ln.startsWith("|")) {
+      const rows = [];
+      while (i < lines.length && lines[i].trim().startsWith("|")) rows.push(lines[i++].trim());
+      i--;
+      const cells = (r) => r.replace(/^\||\|$/g, "").split(/(?<!\\)\|/).map((c) => mdInline(c.trim()));
+      const head = cells(rows[0]);
+      const body = rows.slice(2).map(cells);
+      out.push(`<div class="tw"><table><thead><tr>${head.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${body
+        .map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`)
+        .join("")}</tbody></table></div>`);
+    } else if (ln.startsWith("- ")) {
+      const items = [];
+      while (i < lines.length && lines[i].trim().startsWith("- ")) items.push(lines[i++].trim().slice(2));
+      i--;
+      out.push(`<ul>${items.map((t) => `<li>${mdInline(t)}</li>`).join("")}</ul>`);
+    } else {
+      out.push(`<p>${mdInline(ln)}</p>`);
+    }
+  }
+  return out.join("");
+}
+if (STYLE.summary_md) {
+  $("#notes-body").innerHTML = renderNotes(STYLE.summary_md);
+  $("#open-notes").hidden = false;
+  $("#open-notes").addEventListener("click", () => {
+    $("#notes").hidden = false;
+    $("#notes-body").scrollTop = 0;
+    $("#close-notes").focus();
+  });
+  $("#close-notes").addEventListener("click", () => {
+    $("#notes").hidden = true;
+    $("#open-notes").focus();
+  });
 }
 
 $("#gear").addEventListener("click", () => {
