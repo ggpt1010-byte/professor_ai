@@ -281,7 +281,7 @@ textarea {
       </select>
       <select id="year" aria-label="연차">
         <option value="1">1년차</option><option value="2">2년차</option><option value="3" selected>3년차</option>
-        <option value="4">4년차</option><option value="5">5년차</option><option value="6">6년차 이상</option>
+        <option value="4">4년차</option><option value="5">5년차</option><option value="6">6년차</option><option value="7">7년차 이상</option>
       </select>
       <button type="button" class="newchat" id="newchat">새 대화</button>
     </div>
@@ -446,17 +446,33 @@ function statusLines(ctx) {
 function timeLines(d = new Date()) {
   const wd = "일월화수목금토"[d.getDay()];
   const m = d.getMonth() + 1, h = d.getHours();
-  const term = m >= 3 && m <= 6 ? "1학기 중" : m >= 9 && m <= 12 ? "2학기 중" : m <= 2 ? "겨울방학" : "여름방학";
+  const term = termOf(d).replace(/학기$/, "학기 중");
   const slot = h < 9 ? "출근 전 이른 시간" : h < 21 ? "평일 근무 시간(9시~21시)" : "밤늦은 시간";
   const day = d.getDay() === 0 ? "일요일" : d.getDay() === 6 ? "토요일(세미나가 있을 수 있는 날)" : slot;
   return [`- 지금: ${d.getFullYear()}년 ${m}월 ${d.getDate()}일 (${wd}) ${String(h).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}, ${term}, ${day}`];
 }
 
-function senderText(ctx) {
-  const y = ctx.year >= 6 ? "6년차 이상" : `${ctx.year}년차`;
+// 학기: 3~6월 1학기, 7~8월 여름방학, 9~12월 2학기, 1~2월 겨울방학
+function termOf(d = new Date()) {
+  const m = d.getMonth() + 1;
+  return m >= 3 && m <= 6 ? "1학기" : m >= 9 && m <= 12 ? "2학기" : m <= 2 ? "겨울방학" : "여름방학";
+}
+
+// 졸업 학년(석박통합 7년차, 석사 2년차)에는 1학기에 디펜스를 보고 교수님 서명을 받는다
+function defenseNote(term) {
+  if (term === "1학기") return ", 지금이 디펜스를 보고 교수님 서명을 받는 학기라 실적을 가장 엄격하게 본다";
+  if (term === "겨울방학") return ", 곧 1학기에 디펜스와 교수님 서명이 있어 실적을 엄격하게 본다";
+  return ", 디펜스와 서명은 1학기에 하며 졸업 실적을 가장 신경 쓰는 시기다";
+}
+
+function senderText(ctx, term = termOf()) {
+  const y = ctx.year >= 7 ? "7년차 이상" : `${ctx.year}년차`;
   let note = "";
-  if (ctx.degree === "석박통합") note = ctx.year >= 5 ? " (박사로 취급, 졸업을 앞둔 박사)" : ctx.year >= 3 ? " (3년차 이상이라 박사로 취급)" : " (아직 석사로 취급)";
-  else if (ctx.degree === "석사" && ctx.year >= 2) note = " (졸업을 앞둔 석사)";
+  if (ctx.degree === "석박통합") {
+    if (ctx.year >= 7) note = ` (졸업을 앞둔 박사${defenseNote(term)})`;
+    else if (ctx.year >= 3) note = " (3년차 이상이라 박사로 취급. 보통 7년차에 졸업)";
+    else note = " (아직 석사로 취급)";
+  } else if (ctx.degree === "석사" && ctx.year >= 2) note = ` (졸업을 앞둔 석사${defenseNote(term)})`;
   return `${ctx.degree} ${y}${note}`;
 }
 
