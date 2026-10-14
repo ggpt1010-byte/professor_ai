@@ -29,6 +29,8 @@ SECRET_TOKEN_RE = re.compile(r"(?<![\w/])(?=\S*\d)(?=\S*[A-Za-z가-힣])[^\s:=]+
 COUNT_WORD_RE = re.compile(r"\d+(년|월|일|시|분|초|명|개|번|차|주|장|층|호|원|점|등)")
 # 키워드 없이 툭 던진 비밀번호 모양 낱말 ('kilby500%'): 영문+숫자+특수문자
 BARE_SECRET_RE = re.compile(r"(?<![\w/@.])[A-Za-z]{2,}\d{2,}[%!@#$^&*]+(?![\w/])")
+# 연구실 공용 비밀번호 계열 ('2002kilby', 'Kilby500'): kilby와 숫자가 붙은 낱말
+LAB_SECRET_RE = re.compile(r"(?i)(?<![\w/@.:])(?=[^\s/.:@,]*\d{3})[^\s/.:@,]*kilby[^\s/.:@,]*(?![\w/.@])")
 ID_RE = re.compile(r"(?i)\b(id|아이디)(\s*[:=]\s*)(\S+)")
 URL_PWD_RE = re.compile(r"([?&]pwd=)[^&\s]+")
 # One-time codes such as "인증번호 [760931]"
@@ -138,6 +140,8 @@ def mask_text(text: str, report: CleanReport | None = None) -> str:
     text, n = URL_PWD_RE.subn(lambda m: m.group(1) + SECRET_MASK, text)
     count("비밀번호", n)
     text, n = BARE_SECRET_RE.subn(SECRET_MASK, text)
+    count("비밀번호", n)
+    text, n = LAB_SECRET_RE.subn(SECRET_MASK, text)
     count("비밀번호", n)
     text, n = OTP_RE.subn(lambda m: m.group(1).rstrip("[") + OTP_MASK, text)
     count("인증번호", n)

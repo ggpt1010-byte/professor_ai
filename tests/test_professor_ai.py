@@ -111,6 +111,7 @@ def test_not_a_question():
         ("암호: 4i{Y4o}O6o 이니", "암호: [비밀번호] 이니"),
         ("http://a.com 로 들어가면 비번 kilby2002", "http://a.com 로 들어가면 비번 [비밀번호]"),
         ("BK 비번을 바꾸었는데", "BK 비번을 바꾸었는데"),
+        ("[이메일]\n2002kilby\n입니다", "[이메일]\n[비밀번호]\n입니다"),
     ],
 )
 def test_mask_credentials(text, expected):
